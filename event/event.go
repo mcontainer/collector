@@ -2,7 +2,7 @@ package event
 
 import (
 	"github.com/docker/docker/api/types"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"fmt"
 )
 
@@ -17,7 +17,7 @@ type EventBroker struct {
 }
 
 func NewEventBroker() *EventBroker {
-	log.Println("Start creating event broker")
+	log.Info("Start creating event broker")
 	c := make(chan DockerEvent)
 	return &EventBroker{
 		In: c,
@@ -25,9 +25,9 @@ func NewEventBroker() *EventBroker {
 }
 
 func (broker *EventBroker) Listen() {
-
-	for {
-		fmt.Println(<-broker.In)
-	}
-	fmt.Println("stop listening")
+	go func() {
+		for {
+			fmt.Println(<-broker.In)
+		}
+	}()
 }

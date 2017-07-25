@@ -1,11 +1,12 @@
-BINARY = docker-event-collector
+BINARY = collector
+DIR = docker-event-collector
 GOARCH = amd64
 
 VERSION=1.0
 COMMIT=$(shell git rev-parse HEAD)
 BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 
-BUILD_DIR=${GOPATH}/src/docker-visualizer/${BINARY}/dist
+BUILD_DIR=${GOPATH}/src/docker-visualizer/${DIR}/dist
 
 LDFLAGS = -ldflags "-X main.VERSION=${VERSION} -X main.COMMIT=${COMMIT} -X main.BRANCH=${BRANCH}"
 

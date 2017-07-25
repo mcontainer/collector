@@ -6,7 +6,8 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types"
 	"time"
-	"log"
+	log "github.com/sirupsen/logrus"
+	"errors"
 )
 
 type Docker struct {
@@ -21,7 +22,7 @@ const (
 )
 
 func NewDockerClient() *Docker {
-	log.Println("Start creating docker client")
+	log.Info("Start creating docker client")
 	c, _ := client.NewEnvClient()
 	f := filters.NewArgs()
 	out := make(chan types.Container)
@@ -34,7 +35,7 @@ func NewDockerClient() *Docker {
 	}
 }
 
-func (docker *Docker) Listener() {
+func (docker *Docker) Listen() {
 	ctx := context.Background()
 	docker.filters.Add("event", ACTION_CREATE)
 	ev, err := docker.cli.Events(ctx, types.EventsOptions{Filters: *docker.filters })
@@ -45,21 +46,25 @@ func (docker *Docker) Listener() {
 		for {
 			data := <-ev
 			time.Sleep(500 * time.Millisecond)
-			container := docker.filter(ctx, data.ID)
-			docker.Data <- *container
+			container, e := docker.filter(ctx, data.ID)
+			if e != nil {
+				log.Fatal(e)
+			} else {
+				docker.Data <- *container
+			}
 		}
 	}()
 }
 
-func (docker *Docker) filter(ctx context.Context, id string) *types.Container {
+func (docker *Docker) filter(ctx context.Context, id string) (*types.Container, error) {
 	list, err := docker.cli.ContainerList(ctx, types.ContainerListOptions{})
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	for _, elm := range list {
 		if elm.ID == id {
-			return &elm
+			return &elm, nil
 		}
 	}
-	return nil
+	return nil, errors.New("Container " + id + " not found")
 }

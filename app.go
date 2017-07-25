@@ -2,16 +2,15 @@ package main
 
 import (
 	"flag"
-	"log"
 	"docker-visualizer/docker-event-collector/docker"
 	"docker-visualizer/docker-event-collector/packetbeat"
 	"docker-visualizer/docker-event-collector/event"
-	"fmt"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
-	configPath    = flag.String("config_path", "[to be defined]", "docker config file path")
-	httpPort            = flag.String("http_port", "5000", "http port to sending events")
+	configPath = flag.String("config_path", "[to be defined]", "docker config file path")
+	httpPort   = flag.String("http_port", "5000", "http port to sending events")
 	VERSION    string
 	COMMIT     string
 	BRANCH     string
@@ -26,31 +25,37 @@ func main() {
 
 	flag.Parse()
 
-	fmt.Printf("VERSION: %s - COMMIT: %s - BRANCH: %s \n", VERSION, COMMIT, BRANCH)
+	log.WithFields(log.Fields{
+		"version": VERSION,
+		"commit": COMMIT,
+		"branch": BRANCH,
+	}).Info("Starting collector")
 
 	if *configPath == "[to be defined]" {
 		log.Fatal("A Packetbeat file path must be define")
 	}
 
-	d := docker.NewDockerClient()
-	f := packetbeat.NewConfigFile(*configPath)
-	b := event.NewEventBroker()
+	dockerClient := docker.NewDockerClient()
+	config := packetbeat.NewConfigFile(*configPath)
+	broker := event.NewEventBroker()
 
-	go b.Listen()
-	d.Listener()
+	broker.Listen()
+	dockerClient.Listen()
 
 	for {
-		container := <-d.Data
+		container := <-dockerClient.Data
 		settings := container.NetworkSettings.Networks[MODE]
 		event := event.DockerEvent{
 			ID:        container.ID,
 			IpAddress: settings.IPAddress,
 			Ports:     container.Ports,
 		}
-		portList := f.GetPortList(PROTOCOL)
-		updatePort := f.UpdatePort(container, portList)
-		f.WritePort(updatePort)
-		b.In <- event
+		portList := config.GetPortList(PROTOCOL)
+		updatePort, shouldWrite := config.UpdatePort(container, portList)
+		if shouldWrite {
+			config.WritePort(updatePort)
+		}
+		broker.In <- event
 	}
 
 }

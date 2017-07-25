@@ -2,7 +2,7 @@ package packetbeat
 
 import (
 	"io/ioutil"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"github.com/go-yaml/yaml"
 	"reflect"
 	"os"
@@ -26,7 +26,6 @@ func NewConfigFile(path string) *ConfigFile {
 		log.Fatal(err)
 		os.Exit(1)
 	}
-
 
 	return &ConfigFile{
 		Path: p,
@@ -58,7 +57,8 @@ func (file *ConfigFile) WritePort(data []int) {
 	if error != nil {
 		fmt.Println(error)
 	}
-	log.Println("Data has been written to " + file.Path)
+
+	log.WithField("Path", file.Path).Info("Data has been written to config file")
 }
 
 func (file *ConfigFile) GetYaml() map[interface{}]interface{} {
@@ -81,19 +81,22 @@ func (file *ConfigFile) GetPortList(protocol string) []int {
 	return result
 }
 
-
-func (file *ConfigFile) UpdatePort(container types.Container, actualPortList []int) []int {
+func (file *ConfigFile) UpdatePort(container types.Container, actualPortList []int) ([]int, bool) {
+	portAdded := 0
 	for _, p := range container.Ports {
 		if shouldBeAppend(int(p.PrivatePort), actualPortList) {
+			log.WithField("port", p.PrivatePort).Info("Add new port to configuration")
 			actualPortList = append(actualPortList, int(p.PrivatePort))
+			portAdded++
 		}
 	}
-	return actualPortList
+	return actualPortList, portAdded > 0
 }
 
 func shouldBeAppend(p int, ports []int) bool {
 	for _, port := range ports {
 		if p == port {
+			log.WithField("port", p).Warning("port already exist")
 			return false
 		}
 	}
