@@ -10,7 +10,6 @@ import (
 )
 
 type Docker struct {
-	ctx     *context.Context
 	cli     *client.Client
 	filters *filters.Args
 	Errors  <-chan error
@@ -24,23 +23,21 @@ const (
 func NewDockerClient() *Docker {
 	log.Println("Start creating docker client")
 	c, _ := client.NewEnvClient()
-	ctx := context.Background()
 	f := filters.NewArgs()
 	out := make(chan types.Container)
 	outErr := make(chan error)
-	d := Docker{
-		ctx:     &ctx,
+	return &Docker{
 		cli:     c,
 		filters: &f,
 		Errors:  outErr,
 		Data:    out,
 	}
-	return &d
 }
 
 func (docker *Docker) Listener() {
+	ctx := context.Background()
 	docker.filters.Add("event", ACTION_CREATE)
-	ev, err := docker.cli.Events(*docker.ctx, types.EventsOptions{Filters: *docker.filters })
+	ev, err := docker.cli.Events(ctx, types.EventsOptions{Filters: *docker.filters })
 
 	docker.Errors = err
 
@@ -48,14 +45,14 @@ func (docker *Docker) Listener() {
 		for {
 			data := <-ev
 			time.Sleep(500 * time.Millisecond)
-			container := docker.filter(data.ID)
+			container := docker.filter(ctx, data.ID)
 			docker.Data <- *container
 		}
 	}()
 }
 
-func (docker *Docker) filter(id string) *types.Container {
-	list, err := docker.cli.ContainerList(*docker.ctx, types.ContainerListOptions{})
+func (docker *Docker) filter(ctx context.Context, id string) *types.Container {
+	list, err := docker.cli.ContainerList(ctx, types.ContainerListOptions{})
 	if err != nil {
 		log.Fatal(err)
 	}
