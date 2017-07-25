@@ -1,4 +1,4 @@
-# docker-event-collector
+# Event collector
 
 ## Author 
 
@@ -6,4 +6,4 @@ Paul Boutes
 
 ## Purpose
 
-TODO
+![collector architecture](docs/collector.png)
