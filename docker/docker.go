@@ -19,6 +19,7 @@ type Docker struct {
 
 const (
 	ACTION_CREATE = "create"
+	ACTION_STOP   = "stop"
 )
 
 func NewDockerClient() *Docker {
@@ -38,6 +39,7 @@ func NewDockerClient() *Docker {
 func (docker *Docker) Listen() {
 	ctx := context.Background()
 	docker.filters.Add("event", ACTION_CREATE)
+	docker.filters.Add("event", ACTION_STOP)
 	ev, err := docker.cli.Events(ctx, types.EventsOptions{Filters: *docker.filters })
 
 	docker.Errors = err
@@ -45,12 +47,16 @@ func (docker *Docker) Listen() {
 	go func() {
 		for {
 			data := <-ev
-			time.Sleep(500 * time.Millisecond)
-			container, e := docker.filter(ctx, data.ID)
-			if e != nil {
-				log.Fatal(e)
+			if data.Action == ACTION_CREATE {
+				time.Sleep(500 * time.Millisecond)
+				container, e := docker.filter(ctx, data.ID)
+				if e != nil {
+					log.Fatal(e)
+				} else {
+					docker.Data <- *container
+				}
 			} else {
-				docker.Data <- *container
+				log.WithField("message", data).Warning("Container stopped")
 			}
 		}
 	}()
