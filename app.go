@@ -6,6 +6,7 @@ import (
 	"docker-visualizer/docker-event-collector/packetbeat"
 	"docker-visualizer/docker-event-collector/event"
 	log "github.com/sirupsen/logrus"
+	"docker-visualizer/docker-event-collector/utils"
 )
 
 var (
@@ -17,8 +18,9 @@ var (
 )
 
 const (
-	PROTOCOL = "http"
-	MODE     = "bridge"
+	PROTOCOL  = "http"
+	MODE      = "bridge"
+	MAX_PORTS = 65535
 )
 
 func main() {
@@ -27,8 +29,8 @@ func main() {
 
 	log.WithFields(log.Fields{
 		"version": VERSION,
-		"commit": COMMIT,
-		"branch": BRANCH,
+		"commit":  COMMIT,
+		"branch":  BRANCH,
 	}).Info("Starting collector")
 
 	if *configPath == "[to be defined]" {
@@ -50,10 +52,11 @@ func main() {
 			IpAddress: settings.IPAddress,
 			Ports:     container.Ports,
 		}
-		portList := config.GetPortList(PROTOCOL)
-		updatePort, shouldWrite := config.UpdatePort(container, portList)
+		bitPortsContainer := utils.ToBitArray(container.Ports)
+		bitPortList := config.GetPortList(PROTOCOL)
+		bitPorts, shouldWrite := config.UpdatePort(bitPortsContainer, bitPortList)
 		if shouldWrite {
-			config.WritePort(updatePort)
+			config.WritePort(bitPorts)
 		}
 		broker.In <- event
 	}
