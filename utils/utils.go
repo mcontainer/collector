@@ -5,7 +5,6 @@ import (
 	"github.com/docker/docker/api/types"
 )
 
-
 func ToBitArray(array []types.Port) bitarray.BitArray {
 	b := bitarray.NewBitArray(65535)
 	for _, p := range array {
