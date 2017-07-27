@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"os"
 	"fmt"
-	"github.com/docker/docker/api/types"
 	"path/filepath"
+	"github.com/Workiva/go-datastructures/bitarray"
 )
 
 type ConfigFile struct {
@@ -42,9 +42,9 @@ func (file *ConfigFile) Read() map[interface{}]interface{} {
 	return p
 }
 
-func (file *ConfigFile) WritePort(data []int) {
+func (file *ConfigFile) WritePort(data bitarray.BitArray) {
 	p := file.GetYaml()
-	p["packetbeat.protocols.http"].(map[interface{}]interface{})["ports"] = data
+	p["packetbeat.protocols.http"].(map[interface{}]interface{})["ports"] = data.ToNums()
 	out, _ := yaml.Marshal(&p)
 	f, e := os.Create(file.Path)
 
@@ -69,36 +69,16 @@ func (file *ConfigFile) GetYaml() map[interface{}]interface{} {
 	}
 }
 
-func (file *ConfigFile) GetPortList(protocol string) []int {
+func (file *ConfigFile) GetPortList(protocol string) bitarray.BitArray {
+	ba := bitarray.NewBitArray(65535)
 	p := file.GetYaml()
 	ports := p["packetbeat.protocols."+protocol].(map[interface{}]interface{})["ports"]
-	values := reflect.ValueOf(ports)
-	size := values.Len()
-	result := make([]int, size)
-	for i := 0; i < size; i++ {
-		result[i] = values.Index(i).Interface().(int)
-	}
-	return result
-}
-
-func (file *ConfigFile) UpdatePort(container types.Container, actualPortList []int) ([]int, bool) {
-	portAdded := 0
-	for _, p := range container.Ports {
-		if shouldBeAppend(int(p.PrivatePort), actualPortList) {
-			log.WithField("port", p.PrivatePort).Info("Add new port to configuration")
-			actualPortList = append(actualPortList, int(p.PrivatePort))
-			portAdded++
+	if ports != nil {
+		values := reflect.ValueOf(ports)
+		size := values.Len()
+		for i := 0; i < size; i++ {
+			ba.SetBit(uint64(values.Index(i).Interface().(int)))
 		}
 	}
-	return actualPortList, portAdded > 0
-}
-
-func shouldBeAppend(p int, ports []int) bool {
-	for _, port := range ports {
-		if p == port {
-			log.WithField("port", p).Warning("port already exist")
-			return false
-		}
-	}
-	return true
+	return ba
 }

@@ -17,8 +17,9 @@ var (
 )
 
 const (
-	PROTOCOL = "http"
-	MODE     = "bridge"
+	PROTOCOL  = "http"
+	MODE      = "bridge"
+	MAX_PORTS = 65535
 )
 
 func main() {
@@ -27,8 +28,8 @@ func main() {
 
 	log.WithFields(log.Fields{
 		"version": VERSION,
-		"commit": COMMIT,
-		"branch": BRANCH,
+		"commit":  COMMIT,
+		"branch":  BRANCH,
 	}).Info("Starting collector")
 
 	if *configPath == "[to be defined]" {
@@ -43,19 +44,27 @@ func main() {
 	dockerClient.Listen()
 
 	for {
-		container := <-dockerClient.Data
-		settings := container.NetworkSettings.Networks[MODE]
-		event := event.DockerEvent{
-			ID:        container.ID,
-			IpAddress: settings.IPAddress,
-			Ports:     container.Ports,
+		select {
+		case container := <-dockerClient.Data:
+			settings := container.NetworkSettings.Networks[MODE]
+			event := event.DockerEvent{
+				ID:        container.ID,
+				IpAddress: settings.IPAddress,
+				Ports:     container.Ports,
+			}
+			bitPortsContainer := dockerClient.ToBitPorts(container)
+			bitPortList := config.GetPortList(PROTOCOL)
+			bitPorts, shouldWrite := docker.UpdatePort(bitPortsContainer, bitPortList)
+			if shouldWrite {
+				config.WritePort(bitPorts)
+			}
+			broker.In <- event
+
+		case idRemoved := <-dockerClient.Stop:
+			bitPortList := config.GetPortList(PROTOCOL)
+			updated := dockerClient.RemovePorts(idRemoved, bitPortList)
+			config.WritePort(updated)
 		}
-		portList := config.GetPortList(PROTOCOL)
-		updatePort, shouldWrite := config.UpdatePort(container, portList)
-		if shouldWrite {
-			config.WritePort(updatePort)
-		}
-		broker.In <- event
 	}
 
 }
