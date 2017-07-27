@@ -76,6 +76,7 @@ func (docker *Docker) Listen() {
 				log.WithField("message", data).Warning("Container died / stopped / killed")
 				log.WithField("remaining ports", (*docker.InMemoryPorts)[data.ID].ToNums()).Info("Ports")
 				docker.Stop <- data.ID
+				log.WithField("message", data).Warning("Container stopped")
 			}
 		}
 	}()

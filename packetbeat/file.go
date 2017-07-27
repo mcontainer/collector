@@ -82,3 +82,7 @@ func (file *ConfigFile) GetPortList(protocol string) bitarray.BitArray {
 	}
 	return ba
 }
+
+func (file *ConfigFile) UpdatePort(bPortsContainer bitarray.BitArray, bActualPorts bitarray.BitArray) (bitarray.BitArray, bool) {
+	return bActualPorts.Or(bPortsContainer), !bActualPorts.Equals(bPortsContainer)
+}

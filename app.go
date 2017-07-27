@@ -6,6 +6,7 @@ import (
 	"docker-visualizer/docker-event-collector/packetbeat"
 	"docker-visualizer/docker-event-collector/event"
 	log "github.com/sirupsen/logrus"
+	"docker-visualizer/docker-event-collector/utils"
 )
 
 var (
@@ -19,7 +20,6 @@ var (
 const (
 	PROTOCOL  = "http"
 	MODE      = "bridge"
-	MAX_PORTS = 65535
 )
 
 func main() {
