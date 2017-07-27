@@ -6,7 +6,6 @@ import (
 	"docker-visualizer/docker-event-collector/packetbeat"
 	"docker-visualizer/docker-event-collector/event"
 	log "github.com/sirupsen/logrus"
-	"docker-visualizer/docker-event-collector/utils"
 )
 
 var (
@@ -45,20 +44,27 @@ func main() {
 	dockerClient.Listen()
 
 	for {
-		container := <-dockerClient.Data
-		settings := container.NetworkSettings.Networks[MODE]
-		event := event.DockerEvent{
-			ID:        container.ID,
-			IpAddress: settings.IPAddress,
-			Ports:     container.Ports,
+		select {
+		case container := <-dockerClient.Data:
+			settings := container.NetworkSettings.Networks[MODE]
+			event := event.DockerEvent{
+				ID:        container.ID,
+				IpAddress: settings.IPAddress,
+				Ports:     container.Ports,
+			}
+			bitPortsContainer := dockerClient.ToBitPorts(container)
+			bitPortList := config.GetPortList(PROTOCOL)
+			bitPorts, shouldWrite := docker.UpdatePort(bitPortsContainer, bitPortList)
+			if shouldWrite {
+				config.WritePort(bitPorts)
+			}
+			broker.In <- event
+
+		case idRemoved := <-dockerClient.Stop:
+			bitPortList := config.GetPortList(PROTOCOL)
+			updated := dockerClient.RemovePorts(idRemoved, bitPortList)
+			config.WritePort(updated)
 		}
-		bitPortsContainer := utils.ToBitArray(container.Ports)
-		bitPortList := config.GetPortList(PROTOCOL)
-		bitPorts, shouldWrite := config.UpdatePort(bitPortsContainer, bitPortList)
-		if shouldWrite {
-			config.WritePort(bitPorts)
-		}
-		broker.In <- event
 	}
 
 }

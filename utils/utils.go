@@ -13,24 +13,3 @@ func ToBitArray(array []types.Port) bitarray.BitArray {
 	}
 	return b
 }
-
-func delta(previous bitarray.BitArray, current bitarray.BitArray) bitarray.BitArray {
-
-	if previous.IsEmpty() && current.IsEmpty() {
-		return current
-	}
-
-	if previous.IsEmpty() && !current.IsEmpty() {
-		return current
-	}
-
-	if !previous.IsEmpty() && current.IsEmpty() {
-		return current
-	}
-
-	if !previous.IsEmpty() && !current.IsEmpty() {
-		return previous.And(current)
-	}
-
-	return current
-}
