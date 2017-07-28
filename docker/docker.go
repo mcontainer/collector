@@ -114,7 +114,8 @@ func UpdatePort(bPortsContainer bitarray.BitArray, bActualPorts bitarray.BitArra
 func (docker *Docker) RemovePorts(id string, b bitarray.BitArray) bitarray.BitArray {
 	a := (*docker.InMemoryPorts)[id]
 
-	for _, v := range a.ToNums() {
+	ports := a.ToNums()
+	for _, v := range ports {
 		b.ClearBit(v)
 	}
 
