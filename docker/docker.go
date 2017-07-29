@@ -61,25 +61,23 @@ func (docker *Docker) Listen() {
 
 	docker.Errors = err
 
-	go func() {
-		for {
-			data := <-ev
-			if data.Action == ACTION_CREATE {
-				time.Sleep(500 * time.Millisecond)
-				container, e := docker.filter(ctx, data.ID)
-				if e != nil {
-					log.Fatal(e)
-				} else {
-					docker.Data <- *container
-				}
+	for {
+		data := <-ev
+		if data.Action == ACTION_CREATE {
+			time.Sleep(500 * time.Millisecond)
+			container, e := docker.filter(ctx, data.ID)
+			if e != nil {
+				log.Fatal(e)
 			} else {
-				log.WithField("message", data).Warning("Container died / stopped / killed")
-				log.WithField("remaining ports", (*docker.InMemoryPorts)[data.ID].ToNums()).Info("Ports")
-				docker.Stop <- data.ID
-				log.WithField("message", data).Warning("Container stopped")
+				docker.Data <- *container
 			}
+		} else {
+			log.WithField("message", data).Warning("Container died / stopped / killed")
+			log.WithField("remaining ports", (*docker.InMemoryPorts)[data.ID].ToNums()).Info("Ports")
+			docker.Stop <- data.ID
+			log.WithField("message", data).Warning("Container stopped")
 		}
-	}()
+	}
 }
 
 func (docker *Docker) filter(ctx context.Context, id string) (*types.Container, error) {

@@ -25,9 +25,7 @@ func NewEventBroker() *EventBroker {
 }
 
 func (broker *EventBroker) Listen() {
-	go func() {
-		for {
-			fmt.Println(<-broker.In)
-		}
-	}()
+	for {
+		fmt.Println(<-broker.In)
+	}
 }

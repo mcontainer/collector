@@ -39,8 +39,8 @@ func main() {
 	config := packetbeat.NewConfigFile(*configPath)
 	broker := event.NewEventBroker()
 
-	broker.Listen()
-	dockerClient.Listen()
+	go broker.Listen()
+	go dockerClient.Listen()
 
 	for {
 		select {
