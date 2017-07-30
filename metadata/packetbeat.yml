@@ -1,0 +1,71 @@
+logging.files: null
+logging.to_files: true
+output.logstash:
+  enabled: true
+  hosts:
+  - localhost:5044
+  worker: 1
+packetbeat.flows:
+  enabled: true
+  period: 5s
+  timeout: 30s
+packetbeat.interfaces.device: docker0
+packetbeat.protocols.amqp:
+  enabled: false
+  ports:
+  - 5672
+packetbeat.protocols.cassandra:
+  ports:
+  - 9042
+packetbeat.protocols.dns:
+  enabled: false
+  include_additionals: true
+  include_authorities: true
+  ports:
+  - 53
+packetbeat.protocols.http:
+  enabled: true
+  ports: []
+packetbeat.protocols.icmp:
+  enabled: false
+packetbeat.protocols.memcache:
+  ports: []
+packetbeat.protocols.mongodb:
+  ports:
+  - 27017
+packetbeat.protocols.mysql:
+  enabled: false
+  ports:
+  - 3306
+packetbeat.protocols.nfs:
+  ports:
+  - 2049
+packetbeat.protocols.pgsql:
+  ports:
+  - 5432
+packetbeat.protocols.redis:
+  ports:
+  - 6379
+packetbeat.protocols.thrift:
+  ports:
+  - 9090
+processors:
+- include_fields:
+    fields:
+    - source.ip
+    - dest.ip
+    - source.port
+    - dest.port
+- drop_event:
+    when:
+      or:
+      - equals:
+          source.ip: ""
+      - equals:
+          dest.ip: ""
+- drop_fields:
+    fields:
+    - connection_id
+    - last_time
+    - source.stats
+    - dest.stats
