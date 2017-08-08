@@ -18,7 +18,7 @@ type EventMessage struct {
 }
 
 type Docker struct {
-	cli           *client.Client
+	Cli           *client.Client
 	filters       *filters.Args
 	Errors        <-chan error
 	Data          chan types.Container
@@ -42,7 +42,7 @@ func NewDockerClient() *Docker {
 	outErr := make(chan error)
 	mapPorts := make(map[string]bitarray.BitArray)
 	return &Docker{
-		cli:           c,
+		Cli:           c,
 		filters:       &f,
 		Errors:        outErr,
 		Data:          out,
@@ -57,7 +57,7 @@ func (docker *Docker) Listen() {
 	docker.filters.Add("event", ACTION_STOP)
 	docker.filters.Add("event", ACTION_KILL)
 	docker.filters.Add("event", ACTION_DIE)
-	ev, err := docker.cli.Events(ctx, types.EventsOptions{Filters: *docker.filters })
+	ev, err := docker.Cli.Events(ctx, types.EventsOptions{Filters: *docker.filters })
 
 	docker.Errors = err
 
@@ -80,8 +80,45 @@ func (docker *Docker) Listen() {
 	}
 }
 
+func (docker *Docker) ListenSwarm() {
+	ctx := context.Background()
+	docker.filters.Add("event", ACTION_CREATE)
+	docker.filters.Add("event", ACTION_STOP)
+	docker.filters.Add("event", ACTION_KILL)
+	docker.filters.Add("event", ACTION_DIE)
+	ev, err := docker.Cli.Events(ctx, types.EventsOptions{Filters: *docker.filters })
+	docker.Errors = err
+
+	for {
+		data := <- ev
+		if data.Action == ACTION_CREATE {
+
+			list, err := docker.Cli.ServiceList(ctx, types.ServiceListOptions{})
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			for _, elm := range list {
+				fmt.Println("Service ID = " + elm.ID)
+				fmt.Println(elm.Endpoint)
+			}
+
+			fmt.Println("List network")
+			l, _ := docker.Cli.NetworkList(ctx, types.NetworkListOptions{})
+			for _, net := range l {
+				if net.ID == "i2hs3tcspb8ihc9e9ht7grgno" {
+					fmt.Println(net.Name)
+					fmt.Println(net.Services)
+				}
+			}
+		}
+	}
+
+}
+
 func (docker *Docker) filter(ctx context.Context, id string) (*types.Container, error) {
-	list, err := docker.cli.ContainerList(ctx, types.ContainerListOptions{})
+	list, err := docker.Cli.ContainerList(ctx, types.ContainerListOptions{})
 	if err != nil {
 		return nil, err
 	}

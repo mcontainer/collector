@@ -19,12 +19,12 @@ func TestDocker_Listen(t *testing.T) {
 
 	docker.Listen()
 
-	_, err := docker.cli.ImagePull(ctx, "docker.io/library/alpine", types.ImagePullOptions{})
+	_, err := docker.Cli.ImagePull(ctx, "docker.io/library/alpine", types.ImagePullOptions{})
 	if err != nil {
 		panic(err)
 	}
 
-	resp, err := docker.cli.ContainerCreate(ctx, &container.Config{
+	resp, err := docker.Cli.ContainerCreate(ctx, &container.Config{
 		Image: "alpine",
 		Cmd:   []string{"sleep", "2"},
 	}, nil, nil, "")
@@ -33,7 +33,7 @@ func TestDocker_Listen(t *testing.T) {
 		panic(err)
 	}
 
-	if err := docker.cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+	if err := docker.Cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		panic(err)
 	}
 
