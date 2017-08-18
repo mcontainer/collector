@@ -20,10 +20,12 @@ type EventMessage struct {
 type Docker struct {
 	Cli           *client.Client
 	filters       *filters.Args
+	IngressId     string
 	Errors        <-chan error
 	Data          chan types.Container
 	Stop          chan string
 	InMemoryPorts *map[string]bitarray.BitArray
+	NetworkID     chan string
 }
 
 const (
@@ -38,6 +40,7 @@ func NewDockerClient() *Docker {
 	c, _ := client.NewEnvClient()
 	f := filters.NewArgs()
 	out := make(chan types.Container)
+	networkCh := make(chan string)
 	stop := make(chan string)
 	outErr := make(chan error)
 	mapPorts := make(map[string]bitarray.BitArray)
@@ -48,6 +51,7 @@ func NewDockerClient() *Docker {
 		Data:          out,
 		Stop:          stop,
 		InMemoryPorts: &mapPorts,
+		NetworkID: networkCh,
 	}
 }
 
@@ -90,8 +94,9 @@ func (docker *Docker) ListenSwarm() {
 	docker.Errors = err
 
 	for {
-		data := <- ev
+		data := <-ev
 		if data.Action == ACTION_CREATE {
+			log.WithField("Id", data.ID).Info("CREATE")
 
 			list, err := docker.Cli.ServiceList(ctx, types.ServiceListOptions{})
 
@@ -99,19 +104,31 @@ func (docker *Docker) ListenSwarm() {
 				log.Fatal(err)
 			}
 
-			for _, elm := range list {
-				fmt.Println("Service ID = " + elm.ID)
-				fmt.Println(elm.Endpoint)
-			}
-
-			fmt.Println("List network")
 			l, _ := docker.Cli.NetworkList(ctx, types.NetworkListOptions{})
 			for _, net := range l {
-				if net.ID == "i2hs3tcspb8ihc9e9ht7grgno" {
-					fmt.Println(net.Name)
-					fmt.Println(net.Services)
+				if net.Driver == "overlay" {
+					if net.Name != "ingress" {
+						log.WithField("Name", net.Name)
+					} else {
+						docker.IngressId = net.ID
+					}
+				}
+				//if net.ID == "i2hs3tcspb8ihc9e9ht7grgno" {
+				//	fmt.Println(net.Name)
+				//	fmt.Println(net.Services)
+				//}
+			}
+
+			for _, elm := range list {
+				log.WithField("ServiceId", elm.ID).Info()
+				for _, ips := range elm.Endpoint.VirtualIPs {
+					if ips.NetworkID != docker.IngressId {
+						log.WithField("Network ID", ips.NetworkID).Info("NETWORK")
+						docker.NetworkID <- ips.NetworkID
+					}
 				}
 			}
+
 		}
 	}
 
