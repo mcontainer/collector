@@ -1,11 +1,13 @@
 package utils
 
 import (
-	"github.com/Workiva/go-datastructures/bitarray"
-	"github.com/docker/docker/api/types"
 	"os/exec"
 	log "github.com/sirupsen/logrus"
 	"bufio"
+	"path/filepath"
+	"os"
+	"strings"
+	"io"
 )
 
 type Worker struct {
@@ -40,10 +42,16 @@ func CmdCollector(channel *chan string) {
 	}
 }
 
-func ToBitArray(array []types.Port) bitarray.BitArray {
-	b := bitarray.NewBitArray(65535)
-	for _, p := range array {
-		b.SetBit(uint64(p.PrivatePort))
+func FindNetworkNamespace(rootPath string, namespace string) (result string, err error) {
+	err = filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+		if strings.Contains(info.Name(), namespace[:10]) {
+			result = info.Name()
+			return io.EOF
+		}
+		return nil
+	})
+	if err == io.EOF {
+		err = nil
 	}
-	return b
+	return result, err
 }
