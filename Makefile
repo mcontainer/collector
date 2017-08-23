@@ -8,7 +8,7 @@ BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 
 BUILD_DIR=${GOPATH}/src/docker-visualizer/${DIR}/dist
 
-LDFLAGS = -ldflags "-X main.VERSION=${VERSION} -X main.COMMIT=${COMMIT} -X main.BRANCH=${BRANCH}"
+LDFLAGS = -ldflags "-X main.VERSION=${VERSION} -X main.COMMIT=${COMMIT} -X main.BRANCH=${BRANCH} -linkmode external -extldflags -static"
 
 
 all: clean linux

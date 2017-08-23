@@ -1,23 +1,22 @@
 package main
 
 import (
-	"flag"
 	"docker-visualizer/docker-event-collector/docker"
 	log "github.com/sirupsen/logrus"
 	"github.com/lstoll/cni/pkg/ns"
-	"docker-visualizer/docker-sniffer"
 	"docker-visualizer/docker-event-collector/utils"
 	"path/filepath"
+	"docker-visualizer/docker-event-collector/sniffer"
 )
 
 var (
-	VERSION    string
-	COMMIT     string
-	BRANCH     string
+	VERSION string
+	COMMIT  string
+	BRANCH  string
 )
 
 const (
-	NS_PATH  = "/var/run/docker/netns/"
+	NS_PATH = "/var/run/docker/netns/"
 )
 
 func main() {
@@ -29,9 +28,11 @@ func main() {
 	}).Info("Starting collector")
 
 
-	dockerClient := docker.NewDockerClient()
 
-	go dockerClient.ListenSwarm()
+
+	dockerCLI := docker.NewDockerClient()
+
+	go dockerCLI.ListenSwarm()
 
 	isRunning := make(map[string]bool)
 
@@ -39,17 +40,20 @@ func main() {
 
 	for {
 		select {
-		case id := <-dockerClient.NetworkID:
-			if !isRunning[id] {
-				namespace, err := utils.FindNetworkNamespace(NS_PATH, id)
+		case msg := <-dockerCLI.Data:
+			if !isRunning[msg.NetworkId] {
+				namespace, err := utils.FindNetworkNamespace(NS_PATH, msg.NetworkId)
+				log.WithField("Network namespace", namespace).Info("Find Network Namespace")
 				if err != nil {
 					log.WithField("Error", err.Error()).Fatal("Unable to find network namespace")
 				}
+				log.WithField("path", filepath.Join(NS_PATH, namespace)).Info("Building Namespace path")
 				go ns.WithNetNSPath(filepath.Join(NS_PATH, namespace), func(netns ns.NetNS) error {
-					docker_sniffer.Capture("any", 1024, "tcp", "test_node", &channel)
+					log.Info("Launching capture traffic")
+					sniffer.Capture("any", 1024, "tcp", "test_node", &channel)
 					return nil
 				})
-				isRunning[id] = true
+				isRunning[msg.NetworkId] = true
 			} else {
 				log.Info("Network already monitored")
 			}

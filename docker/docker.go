@@ -7,11 +7,15 @@ import (
 	"github.com/docker/docker/api/types"
 	log "github.com/sirupsen/logrus"
 	"errors"
+	"github.com/docker/docker/api/types/swarm"
+	"time"
 )
 
 type EventMessage struct {
-	Action    string
-	Container types.Container
+	Service     swarm.Service
+	Node        swarm.Node
+	ContainerId string
+	NetworkId   string
 }
 
 type Docker struct {
@@ -19,9 +23,8 @@ type Docker struct {
 	filters   *filters.Args
 	IngressId string
 	Errors    <-chan error
-	Data      chan types.Container
+	Data      chan EventMessage
 	Stop      chan string
-	NetworkID chan string
 }
 
 const (
@@ -35,17 +38,15 @@ func NewDockerClient() *Docker {
 	log.Info("Start creating docker client")
 	c, _ := client.NewEnvClient()
 	f := filters.NewArgs()
-	out := make(chan types.Container)
-	networkCh := make(chan string)
+	out := make(chan EventMessage)
 	stop := make(chan string)
 	outErr := make(chan error)
 	return &Docker{
-		Cli:       c,
-		filters:   &f,
-		Errors:    outErr,
-		Data:      out,
-		Stop:      stop,
-		NetworkID: networkCh,
+		Cli:     c,
+		filters: &f,
+		Errors:  outErr,
+		Data:    out,
+		Stop:    stop,
 	}
 }
 
@@ -72,13 +73,18 @@ func (docker *Docker) ListenSwarm() {
 			if err != nil {
 				log.Fatal(err)
 			}
-
+			time.Sleep(2 * time.Second)
 			for _, service := range services {
 				log.WithField("ServiceId", service.ID).Info()
+				log.WithField("Endpoint size", len(service.Endpoint.VirtualIPs)).Info()
 				for _, ips := range service.Endpoint.VirtualIPs {
 					if ips.NetworkID != docker.IngressId {
 						log.WithField("Network ID", ips.NetworkID).Info("NETWORK")
-						docker.NetworkID <- ips.NetworkID
+						docker.Data <- EventMessage{
+							Service:     service,
+							ContainerId: data.ID,
+							NetworkId:   ips.NetworkID,
+						}
 					}
 				}
 			}
