@@ -7,20 +7,15 @@ import (
 	"github.com/docker/docker/api/types"
 	log "github.com/sirupsen/logrus"
 	"errors"
-	"github.com/docker/docker/api/types/swarm"
-	"time"
 )
 
 type EventMessage struct {
-	Service     swarm.Service
-	Node        swarm.Node
 	ContainerId string
 	NetworkId   string
 }
 
 type Docker struct {
 	Cli       *client.Client
-	filters   *filters.Args
 	IngressId string
 	Errors    <-chan error
 	Data      chan EventMessage
@@ -32,21 +27,21 @@ const (
 	ACTION_STOP   = "stop"
 	ACTION_KILL   = "kill"
 	ACTION_DIE    = "die"
+	ACTION_START  = "start"
+	INGRESS       = "ingress"
 )
 
 func NewDockerClient() *Docker {
 	log.Info("Start creating docker client")
 	c, _ := client.NewEnvClient()
-	f := filters.NewArgs()
 	out := make(chan EventMessage)
 	stop := make(chan string)
 	outErr := make(chan error)
 	return &Docker{
-		Cli:     c,
-		filters: &f,
-		Errors:  outErr,
-		Data:    out,
-		Stop:    stop,
+		Cli:    c,
+		Errors: outErr,
+		Data:   out,
+		Stop:   stop,
 	}
 }
 
@@ -54,41 +49,39 @@ func (docker *Docker) init() {
 	docker.IngressId = docker.findIngressID()
 }
 
-func (docker *Docker) ListenSwarm() {
+func (docker *Docker) Listen() {
 	ctx := context.Background()
 	docker.init()
-	docker.filters.Add("type", "container")
-	docker.filters.Add("event", ACTION_CREATE)
-	docker.filters.Add("event", ACTION_STOP)
-	docker.filters.Add("event", ACTION_KILL)
-	docker.filters.Add("event", ACTION_DIE)
-	ev, err := docker.Cli.Events(ctx, types.EventsOptions{Filters: *docker.filters })
+	f := filters.NewArgs()
+	f.Add("type", "container")
+	f.Add("event", ACTION_CREATE)
+	f.Add("event", ACTION_STOP)
+	f.Add("event", ACTION_KILL)
+	f.Add("event", ACTION_DIE)
+	f.Add("event", ACTION_START)
+	ev, err := docker.Cli.Events(ctx, types.EventsOptions{Filters: f })
 	docker.Errors = err
 
 	for {
 		data := <-ev
-		if data.Action == ACTION_CREATE {
-			log.WithField("Id", data.ID).Info("CREATE")
-			services, err := docker.Cli.ServiceList(ctx, types.ServiceListOptions{})
-			if err != nil {
-				log.Fatal(err)
+		switch data.Action {
+		case ACTION_START:
+			log.WithField("Id", data.ID).Info("START")
+			container, e := docker.filter(ctx, data.ID)
+			if e != nil {
+				log.Fatal(e)
 			}
-			time.Sleep(2 * time.Second)
-			for _, service := range services {
-				log.WithField("ServiceId", service.ID).Info()
-				log.WithField("Endpoint size", len(service.Endpoint.VirtualIPs)).Info()
-				for _, ips := range service.Endpoint.VirtualIPs {
-					if ips.NetworkID != docker.IngressId {
-						log.WithField("Network ID", ips.NetworkID).Info("NETWORK")
-						docker.Data <- EventMessage{
-							Service:     service,
-							ContainerId: data.ID,
-							NetworkId:   ips.NetworkID,
-						}
+			for k, v := range container.NetworkSettings.Networks {
+				if k != INGRESS {
+					docker.Data <- EventMessage{
+						ContainerId: container.ID,
+						NetworkId:   v.NetworkID,
 					}
 				}
 			}
-
+		case ACTION_CREATE:
+			log.WithField("Id", data.ID).Info("CREATE")
+			//TODO: make grpc callS
 		}
 	}
 
@@ -96,23 +89,24 @@ func (docker *Docker) ListenSwarm() {
 
 func (docker *Docker) findIngressID() string {
 	ctx := context.Background()
-	var id string;
-	networks, _ := docker.Cli.NetworkList(ctx, types.NetworkListOptions{})
-	for _, net := range networks {
-		if net.Driver == "overlay" {
-			if net.Name != "ingress" {
-				log.WithField("Name", net.Name)
-			} else {
-				id = net.ID
-			}
-		}
+	f := filters.NewArgs()
+	f.Add("name", INGRESS)
+	networks, _ := docker.Cli.NetworkList(ctx, types.NetworkListOptions{
+		Filters: f,
+	})
+	if len(networks) == 0 {
+		log.Fatal("Ingress Network not found")
 	}
-	log.WithField("ID", id).Info("Find Ingress network id")
-	return id
+	log.WithField("ID", networks[0].ID).Info("Find Ingress network id")
+	return networks[0].ID
 }
 
 func (docker *Docker) filter(ctx context.Context, id string) (*types.Container, error) {
-	list, err := docker.Cli.ContainerList(ctx, types.ContainerListOptions{})
+	f := filters.NewArgs()
+	f.Add("id", id)
+	list, err := docker.Cli.ContainerList(ctx, types.ContainerListOptions{
+		Filters: f,
+	})
 	if err != nil {
 		return nil, err
 	}

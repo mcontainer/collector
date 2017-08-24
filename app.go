@@ -27,17 +27,15 @@ func main() {
 		"branch":  BRANCH,
 	}).Info("Starting collector")
 
-
-
 	channel := make(chan string)
 
 	dockerCLI := docker.NewDockerClient()
 
-	go dockerCLI.ListenSwarm()
+	go dockerCLI.Listen()
 
 	isRunning := make(map[string]bool)
 
-	
+
 	for {
 		select {
 		case msg := <-dockerCLI.Data:
