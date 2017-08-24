@@ -45,13 +45,17 @@ func NewDockerClient() *Docker {
 	}
 }
 
-func (docker *Docker) init() {
-	docker.IngressId = docker.findIngressID()
+func (docker *Docker) initialize() {
+	var e error
+	docker.IngressId, e = docker.findIngressID()
+	if e != nil {
+		log.Fatal(e)
+	}
 }
 
 func (docker *Docker) Listen() {
 	ctx := context.Background()
-	docker.init()
+	docker.initialize()
 	f := filters.NewArgs()
 	f.Add("type", "container")
 	f.Add("event", ACTION_CREATE)
@@ -84,10 +88,9 @@ func (docker *Docker) Listen() {
 			//TODO: make grpc callS
 		}
 	}
-
 }
 
-func (docker *Docker) findIngressID() string {
+func (docker *Docker) findIngressID() (string, error) {
 	ctx := context.Background()
 	f := filters.NewArgs()
 	f.Add("name", INGRESS)
@@ -95,10 +98,10 @@ func (docker *Docker) findIngressID() string {
 		Filters: f,
 	})
 	if len(networks) == 0 {
-		log.Fatal("Ingress Network not found")
+		return "", errors.New("Ingress network ID not found")
 	}
 	log.WithField("ID", networks[0].ID).Info("Find Ingress network id")
-	return networks[0].ID
+	return networks[0].ID, nil
 }
 
 func (docker *Docker) filter(ctx context.Context, id string) (*types.Container, error) {
