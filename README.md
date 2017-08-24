@@ -20,4 +20,9 @@ As mentioned, we collect 2 types of data:
 Docker events are collected in order to say: "Hey, a new container appears, let's monitor it".
 Then, we collect network traffic from in-use containers.
 
+In order to monitor our system, we need to sniff containers network traffic. As 
+we want to operate as well in single host as in multi host, we can not listen to 
+the `docker0` interface. We have to sniff what we called `overlay network`.
+For more information, see this [issue](https://github.com/PaulBoutes/docker-event-collector/issues/6).
+
 ![collector architecture](docs/collector.png)
