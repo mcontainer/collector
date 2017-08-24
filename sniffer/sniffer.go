@@ -2,16 +2,10 @@ package sniffer
 
 import (
 	"github.com/google/gopacket"
-	"github.com/google/gopacket/tcpassembly/tcpreader"
-	"github.com/google/gopacket/tcpassembly"
-	"bufio"
-	"net/http"
-	"io"
 	log "github.com/sirupsen/logrus"
 	"github.com/google/gopacket/examples/util"
-	"github.com/google/gopacket/pcap"
-	"time"
 	"github.com/google/gopacket/layers"
+	"github.com/google/gopacket/afpacket"
 )
 
 //
@@ -20,100 +14,46 @@ import (
 //var filter = flag.String("f", "tcp and dst port 80", "BPF filter for pcap")
 //var node = flag.String("n", "", "Id of the current node")
 
-type httpStreamFactory struct{}
+var (
+	ip4     layers.IPv4
+	eth     layers.Ethernet
+	ip6     layers.IPv6
+	tcp     layers.TCP
+	payload gopacket.Payload
+)
 
-type httpStream struct {
-	net, transport gopacket.Flow
-	reader         tcpreader.ReaderStream
-}
-
-func (h *httpStreamFactory) New(net, transport gopacket.Flow) tcpassembly.Stream {
-	stream := &httpStream{
-		net:       net,
-		transport: transport,
-		reader:    tcpreader.NewReaderStream(),
-	}
-	go stream.run()
-	return &stream.reader
-}
-
-func (h *httpStream) run() {
-	buffer := bufio.NewReader(&h.reader)
-	for {
-		req, err := http.ReadRequest(buffer)
-		if err == io.EOF {
-			return
-		} else if err != nil {
-			log.WithFields(log.Fields{
-				"net":       h.net,
-				"transport": h.transport,
-				"error":     err,
-			}).Fatal("Error reading stream")
-		} else {
-			bytes := tcpreader.DiscardBytesToEOF(req.Body)
-			req.Body.Close()
-			log.WithFields(log.Fields{
-				"net":       h.net,
-				"transport": h.transport,
-				"req":       req,
-				"bytes":     bytes,
-			}).Info("Received request from stream")
-		}
-	}
-}
-
-func Capture(iface string, snaplen int32, filter string, node string, pipe *chan string) {
+func Capture(device string, node string, pipe *chan string) error {
 	defer util.Run()()
-	var handle *pcap.Handle
-	var err error
 
-	log.WithField("interface", iface).Info("Starting capture")
+	decodedLayers := make([]gopacket.LayerType, 0, 10)
 
-	handle, err = pcap.OpenLive(iface, snaplen, true, pcap.BlockForever)
+	parser := gopacket.NewDecodingLayerParser(layers.LayerTypeEthernet, &eth, &ip4, &ip6, &tcp, &payload)
 
+	h, err := newAfpacketSniffer(device, afpacket.DefaultPollTimeout)
 	if err != nil {
-		log.Fatal(err)
+		log.WithField("error", err).Fatal("Error while creating afpacket sniffer")
 	}
 
-	if err := handle.SetBPFFilter(filter); err != nil {
-		log.Fatal(err)
-	}
-
-	streamFactory := &httpStreamFactory{}
-	streamPool := tcpassembly.NewStreamPool(streamFactory)
-	assembler := tcpassembly.NewAssembler(streamPool)
-
-	log.Info("Reading in packets")
-
-	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
-	packets := packetSource.Packets()
-	ticker := time.Tick(time.Minute)
-
+	log.WithField("interface", device).Info("Starting capture")
+	dataSource := gopacket.NewPacketSource(h, layers.LayerTypeEthernet)
+	packets := dataSource.Packets()
 	for {
 		select {
 		case packet := <-packets:
-			if packet == nil {
-				log.Info("Nil packet")
-				return
+			err = parser.DecodeLayers(packet.Data(), &decodedLayers)
+			for _, typ := range decodedLayers {
+				switch typ {
+				case layers.LayerTypeIPv4:
+					log.Info("Successfully decoded layer type Ipv4")
+					*pipe <- ip4.SrcIP.String() + " -> " + ip4.DstIP.String()
+				}
 			}
-			tcp := packet.TransportLayer().(*layers.TCP)
-
-			log.WithFields(log.Fields{
-				"ip src":   packet.NetworkLayer().NetworkFlow().Src().String(),
-				"ip dst":   packet.NetworkLayer().NetworkFlow().Dst().String(),
-				"port src": tcp.SrcPort,
-				"port dst": tcp.DstPort,
-				"node":     node,
-			}).Info("capture traffic")
-			*pipe <- packet.NetworkLayer().NetworkFlow().String()
-
-			if packet.NetworkLayer() == nil || packet.TransportLayer() == nil || packet.TransportLayer().LayerType() != layers.LayerTypeTCP {
-				log.Info("Unusable packet")
-				continue
+			if len(decodedLayers) == 0 {
+				log.Warn("Packet has been truncated")
 			}
-		case <-ticker:
-			log.Info("Flush")
-			assembler.FlushOlderThan(time.Now().Add(time.Minute * -2))
+			if err != nil {
+				log.WithField("err", err).Warn("Warning")
+			}
 		}
 	}
 

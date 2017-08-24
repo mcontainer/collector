@@ -29,6 +29,7 @@ func main() {
 
 
 
+	channel := make(chan string)
 
 	dockerCLI := docker.NewDockerClient()
 
@@ -36,8 +37,7 @@ func main() {
 
 	isRunning := make(map[string]bool)
 
-	channel := make(chan string)
-
+	
 	for {
 		select {
 		case msg := <-dockerCLI.Data:
@@ -49,8 +49,7 @@ func main() {
 				}
 				log.WithField("path", filepath.Join(NS_PATH, namespace)).Info("Building Namespace path")
 				go ns.WithNetNSPath(filepath.Join(NS_PATH, namespace), func(netns ns.NetNS) error {
-					log.Info("Launching capture traffic")
-					sniffer.Capture("any", 1024, "tcp", "test_node", &channel)
+					sniffer.Capture("any", "test_node", &channel)
 					return nil
 				})
 				isRunning[msg.NetworkId] = true
