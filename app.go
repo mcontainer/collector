@@ -7,6 +7,7 @@ import (
 	"docker-visualizer/docker-event-collector/utils"
 	"path/filepath"
 	"docker-visualizer/docker-event-collector/sniffer"
+	"docker-visualizer/docker-event-collector/event"
 )
 
 var (
@@ -28,17 +29,18 @@ func main() {
 	}).Info("Starting collector")
 
 	channel := make(chan string)
-
-	dockerCLI := docker.NewDockerClient()
-
-	go dockerCLI.Listen()
-
+	socket := docker.NewDockerClient()
+	broker := event.NewEventBroker(&channel)
 	isRunning := make(map[string]bool)
+
+	go socket.Listen()
+	go broker.Listen()
+
 
 
 	for {
 		select {
-		case msg := <-dockerCLI.Data:
+		case msg := <-socket.Data:
 			if !isRunning[msg.NetworkId] {
 				namespace, err := utils.FindNetworkNamespace(NS_PATH, msg.NetworkId)
 				log.WithField("Network namespace", namespace).Info("Find Network Namespace")
@@ -54,9 +56,6 @@ func main() {
 			} else {
 				log.Info("Network already monitored")
 			}
-
-		case msg := <-channel:
-			log.WithField("detail", msg).Info("NETWORK TRAFFIC")
 		}
 	}
 
