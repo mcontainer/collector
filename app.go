@@ -28,13 +28,12 @@ func main() {
 		"branch":  BRANCH,
 	}).Info("Starting collector")
 
-	channel := make(chan string)
 	client := docker.NewDockerClient()
-	socket := docker.NewFetcher(client)
-	broker := event.NewEventBroker(&channel)
+	fetcher := docker.NewFetcher(client)
+	broker := event.NewEventBroker()
 	isRunning := make(map[string]bool)
 
-	events, errors := socket.Listen()
+	events, errors := fetcher.Listen()
 	go broker.Listen()
 
 	for {
@@ -49,7 +48,7 @@ func main() {
 				log.WithField("path", filepath.Join(NS_PATH, namespace)).Info("Building Namespace path")
 				go func() {
 					e := ns.WithNetNSPath(filepath.Join(NS_PATH, namespace), func(netns ns.NetNS) error {
-						sniffer.Capture("any", "test_node", &channel)
+						sniffer.Capture("any", "test_node", broker.Stream)
 						return nil
 					})
 					if e != nil {
@@ -58,7 +57,7 @@ func main() {
 				}()
 				isRunning[msg.NetworkId] = true
 			} else {
-				log.Info("Network already monitored")
+				log.WithField("network id", msg.NetworkId).Info("Network already monitored")
 			}
 		case err := <-errors:
 			log.Fatal(err)

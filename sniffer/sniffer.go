@@ -6,6 +6,7 @@ import (
 	"github.com/google/gopacket/examples/util"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/afpacket"
+	"docker-visualizer/docker-event-collector/event"
 )
 
 //
@@ -22,7 +23,7 @@ var (
 	payload gopacket.Payload
 )
 
-func Capture(device string, node string, pipe *chan string) error {
+func Capture(device string, node string, pipe *chan event.NetworkEvent) error {
 	defer util.Run()()
 
 	decodedLayers := make([]gopacket.LayerType, 0, 10)
@@ -45,7 +46,11 @@ func Capture(device string, node string, pipe *chan string) error {
 				switch typ {
 				case layers.LayerTypeIPv4:
 					log.Info("Successfully decoded layer type Ipv4")
-					*pipe <- ip4.SrcIP.String() + " -> " + ip4.DstIP.String()
+					*pipe <- event.NetworkEvent{
+						IpSrc: ip4.SrcIP.String(),
+						IpDst: ip4.DstIP.String(),
+						Size:  ip4.Length - uint16(ip4.IHL*4),
+					}
 				}
 			}
 			if len(decodedLayers) == 0 {

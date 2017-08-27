@@ -1,29 +1,29 @@
 package event
 
 import (
-	"github.com/docker/docker/api/types"
 	log "github.com/sirupsen/logrus"
 )
 
-type DockerEvent struct {
-	ID        string
-	IpAddress string
-	Ports     []types.Port
+type NetworkEvent struct {
+	IpSrc string
+	IpDst string
+	Size  uint16
 }
 
 type EventBroker struct {
-	In *chan string
+	Stream *chan NetworkEvent
 }
 
-func NewEventBroker(c *chan string) *EventBroker {
+func NewEventBroker() *EventBroker {
 	log.Info("Start creating event broker")
+	c := make(chan NetworkEvent)
 	return &EventBroker{
-		In: c,
+		Stream: &c,
 	}
 }
 
 func (broker *EventBroker) Listen() {
 	for {
-		log.WithField("detail", <-*broker.In).Info("NETWORK TRAFFIC")
+		log.WithField("detail", <-*broker.Stream).Info("NETWORK TRAFFIC")
 	}
 }
