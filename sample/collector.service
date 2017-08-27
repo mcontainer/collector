@@ -1,0 +1,10 @@
+[Unit]
+Description=collector service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/opt/collector/collector
+
+[Install]
+WantedBy=multi-user.target

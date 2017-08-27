@@ -14,3 +14,10 @@
 .glide/
 dist/
 .idea/
+*.csr
+*.key
+*.crt
+sample/*.img
+sample/*.merged
+sample/.vagrant
+sample/*.vmdk

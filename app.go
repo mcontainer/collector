@@ -3,11 +3,11 @@ package main
 import (
 	"docker-visualizer/docker-event-collector/docker"
 	log "github.com/sirupsen/logrus"
-	"github.com/lstoll/cni/pkg/ns"
 	"docker-visualizer/docker-event-collector/utils"
 	"path/filepath"
 	"docker-visualizer/docker-event-collector/sniffer"
 	"docker-visualizer/docker-event-collector/event"
+	"github.com/containernetworking/plugins/pkg/ns"
 )
 
 var (
@@ -29,18 +29,17 @@ func main() {
 	}).Info("Starting collector")
 
 	channel := make(chan string)
-	socket := docker.NewDockerClient()
+	client := docker.NewDockerClient()
+	socket := docker.NewFetcher(client)
 	broker := event.NewEventBroker(&channel)
 	isRunning := make(map[string]bool)
 
-	go socket.Listen()
+	events, errors := socket.Listen()
 	go broker.Listen()
-
-
 
 	for {
 		select {
-		case msg := <-socket.Data:
+		case msg := <-events:
 			if !isRunning[msg.NetworkId] {
 				namespace, err := utils.FindNetworkNamespace(NS_PATH, msg.NetworkId)
 				log.WithField("Network namespace", namespace).Info("Find Network Namespace")
@@ -48,14 +47,21 @@ func main() {
 					log.WithField("Error", err.Error()).Fatal("Unable to find network namespace")
 				}
 				log.WithField("path", filepath.Join(NS_PATH, namespace)).Info("Building Namespace path")
-				go ns.WithNetNSPath(filepath.Join(NS_PATH, namespace), func(netns ns.NetNS) error {
-					sniffer.Capture("any", "test_node", &channel)
-					return nil
-				})
+				go func() {
+					e := ns.WithNetNSPath(filepath.Join(NS_PATH, namespace), func(netns ns.NetNS) error {
+						sniffer.Capture("any", "test_node", &channel)
+						return nil
+					})
+					if e != nil {
+						log.WithField("error", e).Fatal("Error while entering in network namespace")
+					}
+				}()
 				isRunning[msg.NetworkId] = true
 			} else {
 				log.Info("Network already monitored")
 			}
+		case err := <-errors:
+			log.Fatal(err)
 		}
 	}
 
