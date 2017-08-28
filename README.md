@@ -11,7 +11,7 @@ host machines. Their primary role are to collect network and
 docker data, and forward them to the graph processor, in order to
 generate a representation of your system, by building the container network topology.
 
-![collector architecture](docs/collector.png)
+![architecture](docs/event-collector.png)
 
 ### What type of data are collected ?
 
