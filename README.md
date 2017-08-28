@@ -6,10 +6,12 @@ Paul Boutes
 
 ## Abstract
 
-The event collectors are agents which are deployed on
-the host machines. Their primary role is to collect network and
+Events collectors are agents which are deployed on
+host machines. Their primary role are to collect network and
 docker data, and forward them to the graph processor, in order to
-generate the representation of your system.
+generate a representation of your system, by building the container network topology.
+
+![collector architecture](docs/collector.png)
 
 ### What type of data are collected ?
 
@@ -25,4 +27,3 @@ we want to operate as well in single host as in multi host, we can not listen to
 the `docker0` interface. We have to sniff what we called `overlay network`.
 For more information, see this [issue](https://github.com/PaulBoutes/docker-event-collector/issues/6).
 
-![collector architecture](docs/collector.png)

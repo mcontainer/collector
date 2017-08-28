@@ -2,12 +2,14 @@ package main
 
 import (
 	"docker-visualizer/docker-event-collector/docker"
-	log "github.com/sirupsen/logrus"
-	"docker-visualizer/docker-event-collector/utils"
-	"path/filepath"
-	"docker-visualizer/docker-event-collector/sniffer"
 	"docker-visualizer/docker-event-collector/event"
+	"docker-visualizer/docker-event-collector/sniffer"
+	"docker-visualizer/docker-event-collector/utils"
+	pb "docker-visualizer/docker-graph-aggregator/events"
 	"github.com/containernetworking/plugins/pkg/ns"
+	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+	"path/filepath"
 )
 
 var (
@@ -28,9 +30,15 @@ func main() {
 		"branch":  BRANCH,
 	}).Info("Starting collector")
 
+	conn, err := grpc.Dial("127.0.0.1:10000", grpc.WithInsecure())
+	grpc := pb.NewEventServiceClient(conn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
 	client := docker.NewDockerClient()
 	fetcher := docker.NewFetcher(client)
-	broker := event.NewEventBroker()
+	broker := event.NewEventBroker(grpc)
 	isRunning := make(map[string]bool)
 
 	events, errors := fetcher.Listen()
