@@ -2,7 +2,7 @@ package event
 
 import (
 	"context"
-	pb "docker-visualizer/docker-graph-aggregator/events"
+	pb "docker-visualizer/proto/events"
 	log "github.com/sirupsen/logrus"
 )
 

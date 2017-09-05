@@ -4,7 +4,7 @@ import (
 	"docker-visualizer/docker-event-collector/docker"
 	"docker-visualizer/docker-event-collector/event"
 	"docker-visualizer/docker-event-collector/namespace"
-	pb "docker-visualizer/docker-graph-aggregator/events"
+	pb "docker-visualizer/proto/events"
 	"flag"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
