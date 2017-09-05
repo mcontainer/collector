@@ -1,13 +1,13 @@
 package docker
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
-	"github.com/docker/docker/api/types"
 	"errors"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
-	"golang.org/x/net/context"
 	"github.com/docker/docker/api/types/network"
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
+	"testing"
 )
 
 type FakeClient struct{}
@@ -70,66 +70,6 @@ func TestNewFetcher(t *testing.T) {
 	client := NewDockerClient()
 	fetcher := NewFetcher(client)
 	assert.NotNil(t, fetcher)
-}
-
-func TestFindIngressId(t *testing.T) {
-	networks = []types.NetworkResource{
-		{
-			Name: "toto",
-			ID:   "12345",
-		},
-		{
-			Name: "ingress",
-			ID:   "123456789",
-		},
-	}
-
-	id, e := fetcher.findIngressID()
-
-	assert.Nil(t, e)
-	assert.NotEmpty(t, id)
-	assert.Equal(t, networks[1].ID, id)
-
-}
-
-func TestNotFindIngressId(t *testing.T) {
-	networks = []types.NetworkResource{
-		{
-			Name: "toto",
-			ID:   "12345",
-		},
-	}
-	id, e := fetcher.findIngressID()
-	assert.Empty(t, id)
-	assert.NotNil(t, e)
-}
-
-func TestInitializeSuccess(t *testing.T) {
-	networks = []types.NetworkResource{
-		{
-			Name: "toto",
-			ID:   "12345",
-		},
-		{
-			Name: "ingress",
-			ID:   "123456789",
-		},
-	}
-	fetcher.initialize()
-	assert.NotEmpty(t, fetcher.IngressId)
-	assert.Equal(t, networks[1].ID, fetcher.IngressId)
-}
-
-func TestInitializeFailure(t *testing.T) {
-	networks = []types.NetworkResource{
-		{
-			Name: "toto",
-			ID:   "12345",
-		},
-	}
-	fetcher.initialize()
-	assert.Empty(t, fetcher.IngressId)
-	assert.Equal(t, "", fetcher.IngressId)
 }
 
 func TestFilterSucess(t *testing.T) {

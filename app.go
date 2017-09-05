@@ -3,13 +3,11 @@ package main
 import (
 	"docker-visualizer/docker-event-collector/docker"
 	"docker-visualizer/docker-event-collector/event"
-	"docker-visualizer/docker-event-collector/sniffer"
-	"docker-visualizer/docker-event-collector/utils"
+	"docker-visualizer/docker-event-collector/namespace"
 	pb "docker-visualizer/docker-graph-aggregator/events"
-	"github.com/containernetworking/plugins/pkg/ns"
+	"flag"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"path/filepath"
 )
 
 var (
@@ -18,11 +16,13 @@ var (
 	BRANCH  string
 )
 
-const (
-	NS_PATH = "/var/run/docker/netns/"
+var (
+	aggregator = flag.String("aggregator", "127.0.0.1:10000", "Endpoint to the aggregator service")
+	node       = flag.String("node", "sample-node", "Specify node name")
 )
 
 func main() {
+	flag.Parse()
 
 	log.WithFields(log.Fields{
 		"version": VERSION,
@@ -30,45 +30,48 @@ func main() {
 		"branch":  BRANCH,
 	}).Info("Starting collector")
 
-	conn, err := grpc.Dial("127.0.0.1:10000", grpc.WithInsecure())
-	grpc := pb.NewEventServiceClient(conn)
+	conn, err := grpc.Dial(*aggregator, grpc.WithInsecure())
 	if err != nil {
-		log.Fatal(err)
+		log.WithField("Error", err).Fatal("Error while creating grpc connection")
 	}
+	grpcClient := pb.NewEventServiceClient(conn)
 	defer conn.Close()
 	client := docker.NewDockerClient()
+	nspace := namespace.NewNamespace()
 	fetcher := docker.NewFetcher(client)
-	broker := event.NewEventBroker(grpc)
-	isRunning := make(map[string]bool)
+	broker := event.NewEventBroker(grpcClient)
 
-	events, errors := fetcher.Listen()
+	networks, err := fetcher.FindOverlayNetworks()
+	if err != nil {
+		log.WithField("Error", err).Warn("App:: Overlay networks")
+	}
+	for _, network := range networks {
+		if network.Name != "ingress" {
+			if err := nspace.Run(network.ID, *node, broker); err != nil {
+				log.WithField("Error", err).Fatal("App:: Error while processing event")
+			}
+		} else {
+			fetcher.IngressId = network.ID
+			log.WithField("ID", fetcher.IngressId).Info("App:: Find Ingress network id")
+		}
+	}
+
+	netEvents, netErrors := fetcher.ListenNetwork()
 	go broker.Listen()
 
 	for {
 		select {
-		case msg := <-events:
-			if !isRunning[msg.NetworkId] {
-				namespace, err := utils.FindNetworkNamespace(NS_PATH, msg.NetworkId)
-				log.WithField("Network namespace", namespace).Info("Find Network Namespace")
-				if err != nil {
-					log.WithField("Error", err.Error()).Fatal("Unable to find network namespace")
+		case info := <-netEvents:
+			if !nspace.IsRunning.Exists(info.NetworkId) {
+				if err := nspace.Run(info.NetworkId, *node, broker); err != nil {
+					log.WithField("Error", err).Fatal("App:: Error while processing event")
 				}
-				log.WithField("path", filepath.Join(NS_PATH, namespace)).Info("Building Namespace path")
-				go func() {
-					e := ns.WithNetNSPath(filepath.Join(NS_PATH, namespace), func(netns ns.NetNS) error {
-						sniffer.Capture("any", "test_node", broker.Stream)
-						return nil
-					})
-					if e != nil {
-						log.WithField("error", e).Fatal("Error while entering in network namespace")
-					}
-				}()
-				isRunning[msg.NetworkId] = true
 			} else {
-				log.WithField("network id", msg.NetworkId).Info("Network already monitored")
+				log.WithField("id", info.NetworkId).Info("App:: Network already monitored")
 			}
-		case err := <-errors:
-			log.Fatal(err)
+			//TODO: send node id to aggregator server through grpc
+		case err := <-netErrors:
+			log.WithField("Error", err).Fatal("App:: An error occured on events stream")
 		}
 	}
 

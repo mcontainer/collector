@@ -23,7 +23,7 @@ var (
 	payload gopacket.Payload
 )
 
-func Capture(device string, node string, pipe *chan event.NetworkEvent) error {
+func Capture(device string, node string, pipe *chan event.NetworkEvent, lock *chan struct{}) error {
 	defer util.Run()()
 
 	decodedLayers := make([]gopacket.LayerType, 0, 10)
@@ -32,12 +32,13 @@ func Capture(device string, node string, pipe *chan event.NetworkEvent) error {
 
 	h, err := newAfpacketSniffer(device, afpacket.DefaultPollTimeout)
 	if err != nil {
-		log.WithField("error", err).Fatal("Error while creating afpacket sniffer")
+		log.WithField("error", err).Fatal("Sniffer:: Error while creating afpacket sniffer")
 	}
 
-	log.WithField("interface", device).Info("Starting capture")
+	log.WithField("interface", device).Info("Sniffer:: Starting capture")
 	dataSource := gopacket.NewPacketSource(h, layers.LayerTypeEthernet)
 	packets := dataSource.Packets()
+	*lock <- struct{}{}
 	for {
 		select {
 		case packet := <-packets:
@@ -45,7 +46,7 @@ func Capture(device string, node string, pipe *chan event.NetworkEvent) error {
 			for _, typ := range decodedLayers {
 				switch typ {
 				case layers.LayerTypeIPv4:
-					log.Info("Successfully decoded layer type Ipv4")
+					log.Info("Sniffer:: Successfully decoded layer type Ipv4")
 					*pipe <- event.NetworkEvent{
 						IpSrc: ip4.SrcIP.String(),
 						IpDst: ip4.DstIP.String(),
@@ -54,10 +55,10 @@ func Capture(device string, node string, pipe *chan event.NetworkEvent) error {
 				}
 			}
 			if len(decodedLayers) == 0 {
-				log.Warn("Packet has been truncated")
+				log.Warn("Sniffer:: Packet has been truncated")
 			}
 			if err != nil {
-				log.WithField("err", err).Warn("Warning")
+				log.WithField("err", err).Warn("Sniffer:: No decoder found")
 			}
 		}
 	}

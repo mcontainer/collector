@@ -18,7 +18,7 @@ type EventBroker struct {
 }
 
 func NewEventBroker(client pb.EventServiceClient) *EventBroker {
-	log.Info("Start creating event b")
+	log.Info("Broker:: Start creating event")
 	c := make(chan NetworkEvent)
 	return &EventBroker{
 		Stream: &c,
@@ -30,12 +30,16 @@ func (b *EventBroker) Listen() {
 
 	stream, err := b.grpc.PushEvent(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		log.WithField("Error", err).Fatal("Broker:: Unable to connect to aggregator endpoint")
 	}
 
 	for {
 		v := <-*b.Stream
-		log.WithField("detail", v).Info("NETWORK TRAFFIC")
+		log.WithFields(log.Fields{
+			"src":  v.IpSrc,
+			"dst":  v.IpDst,
+			"size": v.Size,
+		}).Info("Broker:: Receive network traffic")
 		if err := stream.Send(&pb.Event{IpSrc: v.IpSrc, IpDst: v.IpDst, Size: uint32(v.Size), Stack: "toto"}); err != nil {
 			log.Warn("Failed during sending event")
 		}
