@@ -81,7 +81,7 @@ func (fetcher *Fetcher) Listen() (<-chan EventMessage, <-chan error) {
 			switch data.Action {
 			case ACTION_START:
 				log.WithField("Id", data.ID).Info("START")
-				container, e := fetcher.filter(ctx, data.ID)
+				container, e := fetcher.FilterContainer(ctx, data.ID)
 				if e != nil {
 					log.Fatal(e)
 				}
@@ -118,17 +118,15 @@ func (fetcher *Fetcher) FindOverlayNetworks() ([]types.NetworkResource, error) {
 	return networks, nil
 }
 
-func (fetcher *Fetcher) filter(ctx context.Context, id string) (*types.Container, error) {
+func (fetcher *Fetcher) FilterContainer(ctx context.Context, id string) (*types.Container, error) {
 	f := filters.NewArgs()
 	f.Add("id", id)
-	list, err := fetcher.cli.listContainers(types.ContainerListOptions{Filters: f})
+	containers, err := fetcher.cli.listContainers(types.ContainerListOptions{Filters: f})
 	if err != nil {
 		return nil, err
 	}
-	for _, elm := range list {
-		if elm.ID == id {
-			return &elm, nil
-		}
+	if len(containers) == 0 {
+		return nil, errors.New("No containers")
 	}
-	return nil, errors.New("Container " + id + " not found")
+	return &containers[0], nil
 }

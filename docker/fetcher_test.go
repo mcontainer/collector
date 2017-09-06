@@ -82,7 +82,7 @@ func TestFilterSucess(t *testing.T) {
 			ID: "456b",
 		},
 	}
-	container, error := fetcher.filter(ctx, "456b")
+	container, error := fetcher.FilterContainer(ctx, "456b")
 	assert.Empty(t, error)
 	assert.NotEmpty(t, container)
 	assert.Equal(t, containers[1].ID, container.ID)
@@ -98,7 +98,7 @@ func TestFilterFailure(t *testing.T) {
 			ID: "456b",
 		},
 	}
-	container, error := fetcher.filter(ctx, "123")
+	container, error := fetcher.FilterContainer(ctx, "123")
 	assert.Empty(t, container)
 	assert.NotEmpty(t, error)
 }
