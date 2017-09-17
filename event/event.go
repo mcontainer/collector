@@ -52,7 +52,7 @@ func (b *EventBroker) SendNode(container *types.Container) {
 		Host:    "test",
 	})
 	if e != nil {
-		log.WithField("Error", e).Fatal("Broker:: An error occured while sending grpc request")
+		log.WithField("Error", e).Warn("Broker:: An error occured while sending grpc request")
 	}
 	if !r.Success {
 		log.Warn("Broker:: The node " + container.ID + " has not been added to the database")
@@ -66,7 +66,8 @@ func (b *EventBroker) RemoveNode(containerID string) {
 	}).Info("Broker:: Remove container")
 	r, e := b.grpc.RemoveNode(ctx, &pb.ContainerID{Id: containerID})
 	if e != nil {
-		log.WithField("Error", e).Fatal("Broker:: An error occured while sending grpc request")
+		log.WithField("Error", e).Warn("Broker:: An error occured while sending grpc request")
+		return
 	}
 	if !r.Success {
 		log.Warn("Broker:: The node " + containerID + " has not been removed from the database")
