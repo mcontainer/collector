@@ -49,12 +49,29 @@ func (b *EventBroker) SendNode(container *types.Container) {
 		Ip:      ip,
 		Network: networkName,
 		Stack:   "microservice",
+		Host:    "test",
 	})
 	if e != nil {
 		log.WithField("Error", e).Fatal("Broker:: An error occured while sending grpc request")
 	}
 	if !r.Success {
-		log.Warn("Broker:: The node " + container.ID + " has not been added to th database")
+		log.Warn("Broker:: The node " + container.ID + " has not been added to the database")
+	}
+}
+
+func (b *EventBroker) RemoveNode(containerID string) {
+	ctx := context.Background()
+	log.WithFields(log.Fields{
+		"id": containerID,
+	}).Info("Broker:: Remove container")
+	r, e := b.grpc.RemoveNode(ctx, &pb.ContainerID{Id: containerID})
+	if e != nil {
+		log.WithField("Error", e).Fatal("Broker:: An error occured while sending grpc request")
+	}
+	if !r.Success {
+		log.Warn("Broker:: The node " + containerID + " has not been removed from the database")
+	} else {
+		log.Info("Broker:: Node " + containerID + " has been removed")
 	}
 }
 
@@ -72,7 +89,7 @@ func (b *EventBroker) Listen() {
 			"dst":  v.IpDst,
 			"size": v.Size,
 		}).Info("Broker:: Receive network traffic")
-		if err := stream.Send(&pb.ContainerEvent{IpSrc: v.IpSrc, IpDst: v.IpDst, Size: uint32(v.Size), Stack: "toto"}); err != nil {
+		if err := stream.Send(&pb.ContainerEvent{IpSrc: v.IpSrc, IpDst: v.IpDst, Size: uint32(v.Size), Stack: "toto", Host: "test"}); err != nil {
 			log.Warn("Failed during sending event")
 		}
 	}

@@ -51,6 +51,15 @@ func main() {
 			if err := nspace.Run(network.ID, *node, broker); err != nil {
 				log.WithField("Error", err).Fatal("App:: Error while processing event")
 			}
+
+			containers, err := fetcher.DockerFromNetwork(network.ID)
+			if err != nil {
+				log.WithField("Error", err).Fatal("App:: Error while retrieving containers")
+			}
+			for _, c := range containers {
+				broker.SendNode(c)
+			}
+
 		} else {
 			fetcher.IngressId = network.ID
 			log.WithField("ID", fetcher.IngressId).Info("App:: Find Ingress network id")
@@ -63,19 +72,24 @@ func main() {
 	for {
 		select {
 		case info := <-netEvents:
-			if !nspace.IsRunning.Exists(info.NetworkId) {
-				if err := nspace.Run(info.NetworkId, *node, broker); err != nil {
-					log.WithField("Error", err).Fatal("App:: Error while processing event")
+			switch info.Action {
+			case docker.ACTION_CONNECT:
+				if !nspace.IsRunning.Exists(info.NetworkId) {
+					if err := nspace.Run(info.NetworkId, *node, broker); err != nil {
+						log.WithField("Error", err).Fatal("App:: Error while processing event")
+					}
+				} else {
+					log.WithField("id", info.NetworkId).Info("App:: Network already monitored")
 				}
-			} else {
-				log.WithField("id", info.NetworkId).Info("App:: Network already monitored")
+				//TODO: send node id to aggregator server through grpc
+				container, err := fetcher.FilterContainer(ctx, info.ContainerId)
+				if err != nil {
+					log.Fatal(err)
+				}
+				broker.SendNode(container)
+			case docker.ACTION_DISCONNECT:
+				broker.RemoveNode(info.ContainerId)
 			}
-			//TODO: send node id to aggregator server through grpc
-			container, err := fetcher.FilterContainer(ctx, info.ContainerId)
-			if err != nil {
-				log.Fatal(err)
-			}
-			broker.SendNode(container)
 		case err := <-netErrors:
 			log.WithField("Error", err).Fatal("App:: An error occured on events stream")
 		}

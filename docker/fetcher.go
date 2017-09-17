@@ -9,6 +9,7 @@ import (
 )
 
 type EventMessage struct {
+	Action      string
 	ContainerId string
 	NetworkId   string
 }
@@ -20,13 +21,14 @@ type Fetcher struct {
 }
 
 const (
-	ACTION_CREATE  = "create"
-	ACTION_CONNECT = "connect"
-	ACTION_STOP    = "stop"
-	ACTION_KILL    = "kill"
-	ACTION_DIE     = "die"
-	ACTION_START   = "start"
-	INGRESS        = "ingress"
+	ACTION_CREATE     = "create"
+	ACTION_CONNECT    = "connect"
+	ACTION_DISCONNECT = "disconnect"
+	ACTION_STOP       = "stop"
+	ACTION_KILL       = "kill"
+	ACTION_DIE        = "die"
+	ACTION_START      = "start"
+	INGRESS           = "ingress"
 )
 
 func NewFetcher(client IDockerClient) *Fetcher {
@@ -38,11 +40,29 @@ func NewFetcher(client IDockerClient) *Fetcher {
 	}
 }
 
+func (fetcher *Fetcher) DockerFromNetwork(id string) ([]*types.Container, error) {
+	ctx := context.Background()
+	var containers []*types.Container
+	network, err := fetcher.cli.inspectNetwork(id, types.NetworkInspectOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for k := range network.Containers {
+		container, err := fetcher.FilterContainer(ctx, k)
+		if err != nil {
+			return nil, err
+		}
+		containers = append(containers, container)
+	}
+	return containers, nil
+}
+
 func (fetcher *Fetcher) ListenNetwork() (<-chan EventMessage, <-chan error) {
 	networkChan := make(chan EventMessage)
 	f := filters.NewArgs()
 	f.Add("type", "network")
 	f.Add("event", ACTION_CONNECT)
+	f.Add("event", ACTION_DISCONNECT)
 	events, err := fetcher.cli.streamEvents(types.EventsOptions{Filters: f})
 	go func() {
 		for {
@@ -54,6 +74,17 @@ func (fetcher *Fetcher) ListenNetwork() (<-chan EventMessage, <-chan error) {
 					"container": data.Actor.Attributes["container"],
 				}).Info("Fetcher::Network -- CONNECTION")
 				networkChan <- EventMessage{
+					Action:      ACTION_CONNECT,
+					ContainerId: data.Actor.Attributes["container"],
+					NetworkId:   data.Actor.ID,
+				}
+			case ACTION_DISCONNECT:
+				log.WithFields(log.Fields{
+					"ID":        data.Actor.ID,
+					"container": data.Actor.Attributes["container"],
+				}).Info("Fetcher::Network -- DISCONNECTION")
+				networkChan <- EventMessage{
+					Action:      ACTION_DISCONNECT,
 					ContainerId: data.Actor.Attributes["container"],
 					NetworkId:   data.Actor.ID,
 				}
