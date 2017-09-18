@@ -81,7 +81,6 @@ func main() {
 				} else {
 					log.WithField("id", info.NetworkId).Info("App:: Network already monitored")
 				}
-				//TODO: send node id to aggregator server through grpc
 				container, err := fetcher.FilterContainer(ctx, info.ContainerId)
 				if err != nil {
 					log.Fatal(err)

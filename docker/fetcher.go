@@ -69,14 +69,16 @@ func (fetcher *Fetcher) ListenNetwork() (<-chan EventMessage, <-chan error) {
 			data := <-events
 			switch data.Action {
 			case ACTION_CONNECT:
-				log.WithFields(log.Fields{
-					"ID":        data.Actor.ID,
-					"container": data.Actor.Attributes["container"],
-				}).Info("Fetcher::Network -- CONNECTION")
-				networkChan <- EventMessage{
-					Action:      ACTION_CONNECT,
-					ContainerId: data.Actor.Attributes["container"],
-					NetworkId:   data.Actor.ID,
+				if data.Actor.ID != fetcher.IngressId {
+					log.WithFields(log.Fields{
+						"ID":        data.Actor.ID,
+						"container": data.Actor.Attributes["container"],
+					}).Info("Fetcher::Network -- CONNECTION")
+					networkChan <- EventMessage{
+						Action:      ACTION_CONNECT,
+						ContainerId: data.Actor.Attributes["container"],
+						NetworkId:   data.Actor.ID,
+					}
 				}
 			case ACTION_DISCONNECT:
 				log.WithFields(log.Fields{
