@@ -12,6 +12,7 @@ type EventMessage struct {
 	Action      string
 	ContainerId string
 	NetworkId   string
+	NetworkName string
 }
 
 type Fetcher struct {
@@ -69,7 +70,7 @@ func (fetcher *Fetcher) ListenNetwork() (<-chan EventMessage, <-chan error) {
 			data := <-events
 			switch data.Action {
 			case ACTION_CONNECT:
-				if data.Actor.ID != fetcher.IngressId {
+				if data.Actor.ID != fetcher.IngressId && data.Actor.Attributes["name"] != INGRESS {
 					log.WithFields(log.Fields{
 						"ID":        data.Actor.ID,
 						"container": data.Actor.Attributes["container"],
@@ -78,6 +79,7 @@ func (fetcher *Fetcher) ListenNetwork() (<-chan EventMessage, <-chan error) {
 						Action:      ACTION_CONNECT,
 						ContainerId: data.Actor.Attributes["container"],
 						NetworkId:   data.Actor.ID,
+						NetworkName: data.Actor.Attributes["name"],
 					}
 				}
 			case ACTION_DISCONNECT:

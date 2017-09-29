@@ -5,7 +5,7 @@ PREFIX_INFO="[INFO] ::"
 function fetchIP() {
     vagrant ssh $1 -c "ip addr show eth1 | grep 'inet ' | sed -e 's/^.*inet //' -e 's/\/.*$//'" 2> /dev/null
 }
-#vagrant up
+vagrant up
 
 
 echo "$PREFIX_INFO Fetching master and worker ip"
@@ -31,18 +31,20 @@ echo "$PREFIX_INFO TOKEN = $WORKER_TOKEN"
 echo "$PREFIX_INFO Adding worker node (core-02) to swarm cluster"
 vagrant ssh core-02 -c "docker swarm join --token $WORKER_TOKEN $MASTER_IP:2377"
 
+vagrant ssh "core-03" -c "mkdir -p dgraph && cd dgraph && docker run -d -p 8080:8080 -p 9080:9080 -v ~/dgraph:/dgraph --name dgraph dgraph/dgraph dgraph --bindall=true --memory_mb 2048"
+
 for i in 1 2
 do
-    echo "$PREFIX_INFO starting processor binary on master node"
+    echo "$PREFIX_INFO starting processor binary on core-0$i"
     vagrant ssh "core-0$i" -c "sudo systemctl start processor.service"
 
-    echo "$PREFIX_INFO starting collector binary on master node"
+    echo "$PREFIX_INFO starting collector binary on core-0$i"
     vagrant ssh "core-0$i" -c "sudo systemctl start collector.service"
 done
 
 echo "$PREFIX_INFO starting docker services"
-vagrant ssh core-01 -c "docker network create --driver overlay yolo-network"
-vagrant ssh core-01 -c "docker service create --name server --endpoint-mode dnsrr --network yolo-network paulboutes/server:1"
-vagrant ssh core-01 -c "docker service create --name client --network yolo-network -p 9090:9090 paulboutes/client:1"
+vagrant ssh core-01 -c "docker network create --driver overlay custom-network"
+vagrant ssh core-01 -c "docker service create --name server --endpoint-mode dnsrr --network custom-network paulboutes/server:1"
+vagrant ssh core-01 -c "docker service create --name client --network custom-network -p 9090:9090 paulboutes/client:1"
 
 vagrant ssh core-01

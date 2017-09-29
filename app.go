@@ -9,6 +9,7 @@ import (
 	"flag"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"os"
 )
 
 var (
@@ -31,6 +32,11 @@ func main() {
 		"branch":  BRANCH,
 	}).Info("Starting collector")
 	ctx := context.Background()
+	endpoint := os.Getenv("AGGREGATOR")
+	if endpoint != "" {
+		log.WithField("aggregator", endpoint).Info("Find env variable")
+		aggregator = &endpoint
+	}
 	conn, err := grpc.Dial(*aggregator, grpc.WithInsecure())
 	if err != nil {
 		log.WithField("Error", err).Fatal("Error while creating grpc connection")
@@ -48,18 +54,18 @@ func main() {
 	}
 	for _, network := range networks {
 		if network.Name != "ingress" {
-			if err := nspace.Run(network.ID, *node, broker); err != nil {
-				log.WithField("Error", err).Fatal("App:: Error while processing event")
-			}
-
-			containers, err := fetcher.DockerFromNetwork(network.ID)
+			err := nspace.Run(network.ID, *node, broker)
 			if err != nil {
-				log.WithField("Error", err).Fatal("App:: Error while retrieving containers")
+				log.WithField("Error", err).Warn("App:: Error while processing event")
+			} else {
+				containers, err := fetcher.DockerFromNetwork(network.ID)
+				if err != nil {
+					log.WithField("Error", err).Warn("App:: Error while retrieving containers")
+				}
+				for _, c := range containers {
+					broker.SendNode(c, network.Name)
+				}
 			}
-			for _, c := range containers {
-				broker.SendNode(c)
-			}
-
 		} else {
 			fetcher.IngressId = network.ID
 			log.WithField("ID", fetcher.IngressId).Info("App:: Find Ingress network id")
@@ -85,7 +91,7 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
-				broker.SendNode(container)
+				broker.SendNode(container, info.NetworkName)
 			case docker.ACTION_DISCONNECT:
 				broker.RemoveNode(info.ContainerId)
 			}

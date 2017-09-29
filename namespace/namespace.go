@@ -1,8 +1,10 @@
 package namespace
 
 import (
+	"context"
 	"docker-visualizer/docker-event-collector/event"
 	"docker-visualizer/docker-event-collector/sniffer"
+	"errors"
 	"github.com/Workiva/go-datastructures/set"
 	"github.com/containernetworking/plugins/pkg/ns"
 	log "github.com/sirupsen/logrus"
@@ -27,10 +29,11 @@ func NewNamespace() *Namespace {
 }
 
 func (nspace *Namespace) Run(networkID string, node string, broker *event.EventBroker) error {
+	ctx, cancel := context.WithCancel(context.Background())
 	wait := make(chan struct{})
 	nsvalue, err := nspace.findNetworkNamespace(NS_PATH, networkID)
 	if err != nil {
-		log.WithField("Error", err).Fatal("Namespace:: Unable to find network nsvalue")
+		log.WithField("Error", err).Warn("Namespace:: Unable to find network nsvalue")
 		return err
 	}
 	log.WithField("id", nsvalue).Info("Namespace:: Find network nsvalue")
@@ -45,13 +48,21 @@ func (nspace *Namespace) Run(networkID string, node string, broker *event.EventB
 			return nil
 		})
 		if e != nil {
-			log.WithField("Error", err).Fatal("Namespace:: Unable to enter in the network nsvalue")
+			log.WithField("Error", err).Warn("Namespace:: Unable to enter in the network nsvalue")
+			cancel()
 		}
 	}()
-	<-wait
-	nspace.IsRunning.Add(networkID)
-	log.WithField("id", networkID).Info("Namespace:: Current network is now monitored")
-	return nil
+
+	select {
+	case <-ctx.Done():
+		return errors.New("Namespace:: an error occured")
+	case <-wait:
+		nspace.IsRunning.Add(networkID)
+		log.WithField("id", networkID).Info("Namespace:: Current network is now monitored")
+		return nil
+
+	}
+
 }
 
 func (nspace *Namespace) findNetworkNamespace(rootPath string, namespace string) (result string, err error) {

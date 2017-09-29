@@ -27,27 +27,22 @@ func NewEventBroker(client pb.ContainerServiceClient) *EventBroker {
 	}
 }
 
-func (b *EventBroker) SendNode(container *types.Container) {
+func (b *EventBroker) SendNode(container *types.Container, network string) {
 	ctx := context.Background()
-	ip := ""
-	networkName := ""
-	for k, v := range container.NetworkSettings.Networks {
-		networkName = k
-		ip = v.IPAMConfig.IPv4Address
-	}
+	ip := container.NetworkSettings.Networks[network].IPAMConfig.IPv4Address
 	log.WithFields(log.Fields{
 		"id":           container.ID,
 		"name":         container.Names[0],
 		"service":      container.Labels["com.docker.swarm.service.name"],
 		"ip":           ip,
-		"network name": networkName,
+		"network name": network,
 	}).Info("Broker:: Push container")
 	r, e := b.grpc.AddNode(ctx, &pb.ContainerInfo{
 		Id:      container.ID,
 		Name:    container.Names[0],
 		Service: container.Labels["com.docker.swarm.service.name"],
 		Ip:      ip,
-		Network: networkName,
+		Network: network,
 		Stack:   "microservice",
 		Host:    "test",
 	})

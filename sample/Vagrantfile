@@ -20,7 +20,7 @@ end
 
 
 # Defaults for config options defined in CONFIG
-$num_instances = 2
+$num_instances = 3
 $instance_name_prefix = "core"
 $enable_serial_logging = false
 $share_home = false
@@ -114,8 +114,10 @@ Vagrant.configure("2") do |config|
       end
 
       ip = "172.17.8.#{i+100}"
-      config.vm.provision "shell", path: 'provision.sh', privileged: true
-      config.vm.network :private_network, ip: ip
+      if i < 3
+        config.vm.provision "shell", path: 'provision.sh', privileged: true
+      end
+        config.vm.network :private_network, ip: ip
       # This tells Ignition what the IP for eth1 (the host-only adapter) should be
       config.ignition.ip = ip
 
