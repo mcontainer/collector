@@ -1,19 +1,18 @@
 package sniffer
 
 import (
-	"github.com/google/gopacket/afpacket"
-	"time"
-	"github.com/google/gopacket"
-	log "github.com/sirupsen/logrus"
 	"fmt"
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/afpacket"
+	log "github.com/sirupsen/logrus"
 	"os"
+	"time"
 )
 
 type afpacketSniffer struct {
 	TPacket *afpacket.TPacket
 }
 
-//From packetbeat
 func afpacketComputeSize(target_size_mb int, snaplen int, page_size int) (
 	frame_size int, block_size int, num_blocks int, err error) {
 
@@ -23,12 +22,11 @@ func afpacketComputeSize(target_size_mb int, snaplen int, page_size int) (
 		frame_size = (snaplen/page_size + 1) * page_size
 	}
 
-	// 128 is the default from the gopacket library so just use that
 	block_size = frame_size * 128
 	num_blocks = (target_size_mb * 1024 * 1024) / block_size
 
 	if num_blocks == 0 {
-		return 0, 0, 0, fmt.Errorf("Buffer size too small")
+		return 0, 0, 0, fmt.Errorf("buffer size too small")
 	}
 
 	return frame_size, block_size, num_blocks, nil
@@ -37,8 +35,8 @@ func afpacketComputeSize(target_size_mb int, snaplen int, page_size int) (
 func newAfpacketSniffer(device string, timeout time.Duration) (h *afpacketSniffer, err error) {
 
 	const (
-		buffer_mb int  = 24
-		snaplen   int  = 65536
+		buffer_mb int = 24
+		snaplen   int = 65536
 	)
 
 	frameSize, blockSize, numBlocks, e := afpacketComputeSize(

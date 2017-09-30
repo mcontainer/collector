@@ -5,6 +5,7 @@ import (
 	"docker-visualizer/docker-event-collector/docker"
 	"docker-visualizer/docker-event-collector/event"
 	"docker-visualizer/docker-event-collector/namespace"
+	"docker-visualizer/docker-event-collector/util"
 	pb "docker-visualizer/proto/containers"
 	"flag"
 	log "github.com/sirupsen/logrus"
@@ -32,6 +33,7 @@ func main() {
 		"branch":  BRANCH,
 	}).Info("Starting collector")
 	ctx := context.Background()
+	hostname := util.FindHostname()
 	endpoint := os.Getenv("AGGREGATOR")
 	if endpoint != "" {
 		log.WithField("aggregator", endpoint).Info("Find env variable")
@@ -63,7 +65,7 @@ func main() {
 					log.WithField("Error", err).Warn("App:: Error while retrieving containers")
 				}
 				for _, c := range containers {
-					broker.SendNode(c, network.Name)
+					broker.SendNode(c, network.Name, hostname)
 				}
 			}
 		} else {
@@ -91,7 +93,7 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
-				broker.SendNode(container, info.NetworkName)
+				broker.SendNode(container, info.NetworkName, hostname)
 			case docker.ACTION_DISCONNECT:
 				broker.RemoveNode(info.ContainerId)
 			}

@@ -27,7 +27,7 @@ func NewEventBroker(client pb.ContainerServiceClient) *EventBroker {
 	}
 }
 
-func (b *EventBroker) SendNode(container *types.Container, network string) {
+func (b *EventBroker) SendNode(container *types.Container, network, hostname string) {
 	ctx := context.Background()
 	ip := container.NetworkSettings.Networks[network].IPAMConfig.IPv4Address
 	log.WithFields(log.Fields{
@@ -44,7 +44,7 @@ func (b *EventBroker) SendNode(container *types.Container, network string) {
 		Ip:      ip,
 		Network: network,
 		Stack:   "microservice",
-		Host:    "test",
+		Host:    hostname,
 	})
 	if e != nil {
 		log.WithField("Error", e).Warn("Broker:: An error occured while sending grpc request")

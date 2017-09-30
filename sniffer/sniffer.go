@@ -2,11 +2,13 @@ package sniffer
 
 import (
 	"docker-visualizer/docker-event-collector/event"
+	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/afpacket"
 	"github.com/google/gopacket/examples/util"
 	"github.com/google/gopacket/layers"
 	log "github.com/sirupsen/logrus"
+	"regexp"
 )
 
 //
@@ -14,6 +16,10 @@ import (
 //var snaplen = flag.Int("s", 1600, "SnapLen for pcap packet capture")
 //var filter = flag.String("f", "tcp and dst port 80", "BPF filter for pcap")
 //var node = flag.String("n", "", "Id of the current node")
+
+const (
+	HTTP_REGEXP = `HTTP\/\d\.\d\s+(\d+)\s+.*`
+)
 
 var (
 	ip4     layers.IPv4
@@ -51,6 +57,16 @@ func Capture(device string, node string, pipe *chan event.NetworkEvent, lock *ch
 						IpSrc: ip4.SrcIP.String(),
 						IpDst: ip4.DstIP.String(),
 						Size:  ip4.Length - uint16(ip4.IHL*4),
+					}
+					applicationLayer := packet.ApplicationLayer()
+					if applicationLayer != nil {
+						fmt.Println("Application layer/Payload found.")
+						fmt.Printf("%s\n", applicationLayer.Payload())
+						r := regexp.MustCompile(HTTP_REGEXP)
+						codes := r.FindStringSubmatch(string(applicationLayer.Payload()))
+						if len(codes) >= 2 {
+							log.WithField("code", codes[1]).Info("Sniffer:: Http status find")
+						}
 					}
 				}
 			}
