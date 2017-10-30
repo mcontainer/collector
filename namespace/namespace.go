@@ -74,7 +74,6 @@ func (nspace *Namespace) Run(networkID string, node string, broker *event.EventB
 		nspace.isRunning.Add(networkID)
 		log.WithField("id", networkID).Info("namespace:: Current network is now monitored")
 		return nil
-
 	}
 
 }

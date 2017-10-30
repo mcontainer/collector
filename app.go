@@ -66,7 +66,9 @@ func main() {
 					log.WithField("Error", err).Warn("App:: Error while retrieving containers")
 				}
 				for _, c := range containers {
-					broker.SendNode(c, network.Name, hostname)
+					if e := broker.SendNode(c, network.Name, hostname); e != nil {
+						log.WithField("Error", e).Warn("Broker:: An error occured while sending node")
+					}
 				}
 			}
 		} else {
@@ -95,9 +97,13 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
-				broker.SendNode(container, info.NetworkName, hostname)
+				if e := broker.SendNode(container, info.NetworkName, hostname); e != nil {
+					log.WithField("Error", e).Warn("Broker:: An error occured while sending node")
+				}
 			case docker.ACTION_DISCONNECT:
-				broker.RemoveNode(info.ContainerId)
+				if e := broker.RemoveNode(info.ContainerId); e != nil {
+					log.WithField("Error", e).Warn("Broker:: An error occured while removing node")
+				}
 			}
 		case err := <-netErrors:
 			log.WithField("Error", err).Fatal("App:: An error occured on events stream")

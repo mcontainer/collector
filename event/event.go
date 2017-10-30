@@ -5,6 +5,7 @@ import (
 	pb "docker-visualizer/proto/containers"
 	"github.com/docker/docker/api/types"
 	log "github.com/sirupsen/logrus"
+	"errors"
 )
 
 type NetworkEvent struct {
@@ -27,7 +28,7 @@ func NewEventBroker(client pb.ContainerServiceClient) *EventBroker {
 	}
 }
 
-func (b *EventBroker) SendNode(container *types.Container, network, hostname string) {
+func (b *EventBroker) SendNode(container *types.Container, network, hostname string) error {
 	ctx := context.Background()
 	ip := container.NetworkSettings.Networks[network].IPAMConfig.IPv4Address
 	log.WithFields(log.Fields{
@@ -47,37 +48,36 @@ func (b *EventBroker) SendNode(container *types.Container, network, hostname str
 		Host:    hostname,
 	})
 	if e != nil {
-		log.WithField("Error", e).Warn("Broker:: An error occured while sending grpc request")
+		return e
 	}
 	if !r.Success {
-		log.Warn("Broker:: The node " + container.ID + " has not been added to the database")
+		return errors.New("The node " + container.ID + " has not been added to the database")
 	}
+	return nil
 }
 
-func (b *EventBroker) RemoveNode(containerID string) {
+func (b *EventBroker) RemoveNode(containerID string) error {
 	ctx := context.Background()
 	log.WithFields(log.Fields{
 		"id": containerID,
 	}).Info("Broker:: Remove container")
 	r, e := b.grpc.RemoveNode(ctx, &pb.ContainerID{Id: containerID})
 	if e != nil {
-		log.WithField("Error", e).Warn("Broker:: An error occured while sending grpc request")
-		return
+		return e
 	}
 	if !r.Success {
 		log.Warn("Broker:: The node " + containerID + " has not been removed from the database")
-	} else {
-		log.Info("Broker:: Node " + containerID + " has been removed")
+		return errors.New("The node " + containerID + " has not been removed from the database")
 	}
+	log.Info("Broker:: Node " + containerID + " has been removed")
+	return nil
 }
 
 func (b *EventBroker) Listen() {
-
 	stream, err := b.grpc.StreamContainerEvents(context.Background())
 	if err != nil {
 		log.WithField("Error", err).Fatal("Broker:: Unable to connect to aggregator endpoint")
 	}
-
 	for {
 		v := <-*b.Stream
 		log.WithFields(log.Fields{
