@@ -35,8 +35,8 @@ func afpacketComputeSize(target_size_mb int, snaplen int, page_size int) (
 func newAfpacketSniffer(device string, timeout time.Duration) (h *afpacketSniffer, err error) {
 
 	const (
-		buffer_mb int = 24
-		snaplen   int = 65536
+		buffer_mb = 24
+		snaplen   = 65536
 	)
 
 	frameSize, blockSize, numBlocks, e := afpacketComputeSize(
