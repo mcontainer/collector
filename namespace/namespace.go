@@ -18,20 +18,42 @@ const (
 	NS_PATH = "/var/run/docker/netns/"
 )
 
-type Namespace struct {
-	IsRunning *set.Set
+type INamespace interface {
+	Run(networkID string, node string, broker *event.EventBroker, wait *chan struct{}) error
+	IsRunning(networkID string) bool
+	GetRunningNetworks() *set.Set
 }
 
-func NewNamespace() *Namespace {
+type INamespaceHelper interface {
+	findNetworkNamespace(rootPath string, namespace string) (result string, err error)
+	runInNamespace(path string, node string, broker *event.EventBroker, wait *chan struct{}) error
+}
+
+type NamespaceHelper struct{}
+
+type Namespace struct {
+	isRunning *set.Set
+	helper    INamespaceHelper
+}
+
+func NewNamespace() INamespace {
 	return &Namespace{
-		IsRunning: set.New(),
+		isRunning: set.New(),
+		helper:    &NamespaceHelper{},
 	}
 }
 
-func (nspace *Namespace) Run(networkID string, node string, broker *event.EventBroker) error {
+func (nspace *Namespace) IsRunning(networkID string) bool {
+	return nspace.isRunning.Exists(networkID)
+}
+
+func (nspace *Namespace) GetRunningNetworks() *set.Set {
+	return nspace.isRunning
+}
+
+func (nspace *Namespace) Run(networkID string, node string, broker *event.EventBroker, wait *chan struct{}) error {
 	ctx, cancel := context.WithCancel(context.Background())
-	wait := make(chan struct{})
-	nsvalue, err := nspace.findNetworkNamespace(NS_PATH, networkID)
+	nsvalue, err := nspace.helper.findNetworkNamespace(NS_PATH, networkID)
 	if err != nil {
 		log.WithField("Error", err).Warn("Namespace:: Unable to find network nsvalue")
 		return err
@@ -40,35 +62,38 @@ func (nspace *Namespace) Run(networkID string, node string, broker *event.EventB
 	path := filepath.Join(NS_PATH, nsvalue)
 	log.WithField("path", path).Info("Namespace:: Building Namespace path")
 	go func() {
-		e := ns.WithNetNSPath(path, func(netNS ns.NetNS) error {
-			if err := sniffer.Capture("any", node, broker.Stream, &wait); err != nil {
-				log.WithField("Error", err).Fatal("Namespace:: Unable to start the sniffing process")
-				return err
-			}
-			return nil
-		})
-		if e != nil {
-			log.WithField("Error", err).Warn("Namespace:: Unable to enter in the network nsvalue")
+		if nspace.helper.runInNamespace(path, node, broker, wait) != nil {
+			log.WithField("Error", err).Warn("namespace:: Unable to enter in the network nsvalue")
 			cancel()
 		}
 	}()
-
 	select {
 	case <-ctx.Done():
-		return errors.New("Namespace:: an error occured")
-	case <-wait:
-		nspace.IsRunning.Add(networkID)
-		log.WithField("id", networkID).Info("Namespace:: Current network is now monitored")
+		return errors.New("namespace:: an error occured")
+	case <-*wait:
+		nspace.isRunning.Add(networkID)
+		log.WithField("id", networkID).Info("namespace:: Current network is now monitored")
 		return nil
 
 	}
 
 }
 
-func (nspace *Namespace) findNetworkNamespace(rootPath string, namespace string) (result string, err error) {
+func (*NamespaceHelper) runInNamespace(path string, node string, broker *event.EventBroker, wait *chan struct{}) error {
+	return ns.WithNetNSPath(path, func(netNS ns.NetNS) error {
+		if err := sniffer.Capture("any", node, broker.Stream, wait); err != nil {
+			log.WithField("Error", err).Fatal("Namespace:: Unable to start the sniffing process")
+			return err
+		}
+		return nil
+	})
+}
+
+func (*NamespaceHelper) findNetworkNamespace(rootPath string, namespace string) (result string, err error) {
 	err = filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
-		if strings.Contains(info.Name(), namespace[:10]) {
-			result = info.Name()
+		name := info.Name()
+		if strings.Contains(name, namespace[:10]) {
+			result = name
 			return io.EOF
 		}
 		return nil

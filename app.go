@@ -56,7 +56,8 @@ func main() {
 	}
 	for _, network := range networks {
 		if network.Name != "ingress" {
-			err := nspace.Run(network.ID, *node, broker)
+			wait := make(chan struct{})
+			err := nspace.Run(network.ID, *node, broker, &wait)
 			if err != nil {
 				log.WithField("Error", err).Warn("App:: Error while processing event")
 			} else {
@@ -82,8 +83,9 @@ func main() {
 		case info := <-netEvents:
 			switch info.Action {
 			case docker.ACTION_CONNECT:
-				if !nspace.IsRunning.Exists(info.NetworkId) {
-					if err := nspace.Run(info.NetworkId, *node, broker); err != nil {
+				if !nspace.IsRunning(info.NetworkId) {
+					wait := make(chan struct{})
+					if err := nspace.Run(info.NetworkId, *node, broker, &wait); err != nil {
 						log.WithField("Error", err).Fatal("App:: Error while processing event")
 					}
 				} else {
