@@ -34,17 +34,14 @@ func main() {
 	}).Info("Starting collector")
 	ctx := context.Background()
 	hostname := util.FindHostname()
-	endpoint := os.Getenv("AGGREGATOR")
-	if endpoint != "" {
-		log.WithField("aggregator", endpoint).Info("Find env variable")
-		aggregator = &endpoint
-	}
+	util.SetAggregatorEndpoint(aggregator)
 	conn, err := grpc.Dial(*aggregator, grpc.WithInsecure())
 	if err != nil {
 		log.WithField("Error", err).Fatal("Error while creating grpc connection")
 	}
 	grpcClient := pb.NewContainerServiceClient(conn)
 	defer conn.Close()
+	
 	client := docker.NewDockerClient()
 	nspace := namespace.NewNamespace()
 	fetcher := docker.NewFetcher(client)
