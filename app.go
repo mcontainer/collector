@@ -2,15 +2,14 @@ package main
 
 import (
 	"context"
-	"docker-visualizer/docker-event-collector/docker"
-	"docker-visualizer/docker-event-collector/event"
-	"docker-visualizer/docker-event-collector/namespace"
-	"docker-visualizer/docker-event-collector/util"
+	"docker-visualizer/collector/docker"
+	"docker-visualizer/collector/event"
+	"docker-visualizer/collector/namespace"
+	"docker-visualizer/collector/util"
 	pb "docker-visualizer/proto/containers"
 	"flag"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"os"
 )
 
 var (
@@ -41,7 +40,7 @@ func main() {
 	}
 	grpcClient := pb.NewContainerServiceClient(conn)
 	defer conn.Close()
-	
+
 	client := docker.NewDockerClient()
 	nspace := namespace.NewNamespace()
 	fetcher := docker.NewFetcher(client)

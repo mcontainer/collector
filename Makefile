@@ -1,5 +1,5 @@
 BINARY = collector
-DIR = docker-event-collector
+DIR = collector
 GOARCH = amd64
 
 VERSION=1.0

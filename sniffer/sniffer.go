@@ -1,7 +1,7 @@
 package sniffer
 
 import (
-	"docker-visualizer/docker-event-collector/event"
+	"docker-visualizer/collector/event"
 	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/afpacket"

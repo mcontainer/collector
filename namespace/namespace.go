@@ -2,8 +2,8 @@ package namespace
 
 import (
 	"context"
-	"docker-visualizer/docker-event-collector/event"
-	"docker-visualizer/docker-event-collector/sniffer"
+	"docker-visualizer/collector/event"
+	"docker-visualizer/collector/sniffer"
 	"errors"
 	"github.com/Workiva/go-datastructures/set"
 	"github.com/containernetworking/plugins/pkg/ns"
@@ -53,17 +53,17 @@ func (nspace *Namespace) GetRunningNetworks() *set.Set {
 
 func (nspace *Namespace) Run(networkID string, node string, broker *event.EventBroker, wait *chan struct{}) error {
 	ctx, cancel := context.WithCancel(context.Background())
-	nsvalue, err := nspace.helper.findNetworkNamespace(NS_PATH, networkID)
+	name, err := nspace.helper.findNetworkNamespace(NS_PATH, networkID)
 	if err != nil {
-		log.WithField("Error", err).Warn("Namespace:: Unable to find network nsvalue")
+		log.WithField("Error", err).Warn("Namespace:: Unable to find network name")
 		return err
 	}
-	log.WithField("id", nsvalue).Info("Namespace:: Find network nsvalue")
-	path := filepath.Join(NS_PATH, nsvalue)
+	log.WithField("id", name).Info("Namespace:: Find network name")
+	path := filepath.Join(NS_PATH, name)
 	log.WithField("path", path).Info("Namespace:: Building Namespace path")
 	go func() {
 		if nspace.helper.runInNamespace(path, node, broker, wait) != nil {
-			log.WithField("Error", err).Warn("namespace:: Unable to enter in the network nsvalue")
+			log.WithField("Error", err).Warn("namespace:: Unable to enter in the network name")
 			cancel()
 		}
 	}()
