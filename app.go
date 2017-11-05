@@ -59,11 +59,11 @@ func main() {
 			} else {
 				containers, err := fetcher.DockerFromNetwork(network.ID)
 				if err != nil {
-					log.WithField("Error", err).Warn("App:: Error while retrieving containers")
+					log.WithField("Error", err).Error("App:: Error while retrieving containers")
 				}
 				for _, c := range containers {
 					if e := broker.SendNode(c, network.Name, hostname); e != nil {
-						log.WithField("Error", e).Warn("Broker:: An error occured while sending node")
+						log.WithField("Error", e).Error("Broker:: An error occured while sending node")
 					}
 				}
 			}
@@ -102,7 +102,7 @@ func main() {
 				}
 			}
 		case err := <-netErrors:
-			log.WithField("Error", err).Fatal("App:: An error occured on events stream")
+			log.WithField("Error", err).Error("App:: An error occured on events stream")
 		}
 	}
 

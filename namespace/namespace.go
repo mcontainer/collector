@@ -58,7 +58,6 @@ func (nspace *Namespace) Run(networkID string, node string, broker *event.EventB
 		log.WithField("Error", err).Warn("Namespace:: Unable to find network name")
 		return err
 	}
-	log.WithField("id", name).Info("Namespace:: Find network name")
 	path := filepath.Join(NS_PATH, name)
 	log.WithField("path", path).Info("Namespace:: Building Namespace path")
 	go func() {

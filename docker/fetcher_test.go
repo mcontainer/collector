@@ -5,7 +5,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/net/context"
@@ -17,7 +16,6 @@ type FakeClient struct {
 }
 
 var (
-	networks   []types.NetworkResource
 	containers []types.Container
 	event      []events.Message
 )
@@ -160,70 +158,4 @@ func TestDockerFromNetworkSucess(t *testing.T) {
 	assert.Len(t, containers, 2)
 	assert.Equal(t, "test", containers[0].ID)
 	assert.Equal(t, "titi", containers[1].ID)
-}
-
-func TestListen(t *testing.T) {
-
-	mockClient := FakeClient{}
-
-	endpoints := make(map[string]*network.EndpointSettings)
-	endpoints["toto"] = &network.EndpointSettings{NetworkID: "154a"}
-	endpoints["titi"] = &network.EndpointSettings{NetworkID: "456u"}
-
-	event = []events.Message{
-		{
-			Action: "create",
-			ID:     "123a",
-		},
-		{
-			Action: "start",
-			ID:     "456b",
-		},
-	}
-
-	containers = []types.Container{
-		{
-			ID: "123a",
-			NetworkSettings: &types.SummaryNetworkSettings{
-				Networks: endpoints,
-			},
-		},
-		{
-			ID: "456b",
-			NetworkSettings: &types.SummaryNetworkSettings{
-				Networks: endpoints,
-			},
-		},
-	}
-	networks = []types.NetworkResource{
-		{
-			Name: "toto",
-			ID:   "12345",
-		},
-		{
-			Name: "ingress",
-			ID:   "123456789",
-		},
-	}
-
-	f := filters.NewArgs()
-	f.Add("id", "123a")
-	f2 := filters.NewArgs()
-	f2.Add("id", "456b")
-	mockClient.m.On("listContainers", types.ContainerListOptions{Filters: f}).Return([]types.Container{containers[0]}, nil)
-	mockClient.m.On("listContainers", types.ContainerListOptions{Filters: f2}).Return([]types.Container{containers[1]}, nil)
-	fetcher := NewFetcher(&mockClient)
-
-	out, _ := fetcher.Listen()
-
-	data := <-out
-	assert.NotNil(t, data)
-	assert.Equal(t, containers[1].ID, data.ContainerId)
-	assert.Equal(t, containers[0].NetworkSettings.Networks["toto"].NetworkID, data.NetworkId)
-
-	data = <-out
-	assert.NotNil(t, data)
-	assert.Equal(t, containers[1].ID, data.ContainerId)
-	assert.Equal(t, containers[0].NetworkSettings.Networks["titi"].NetworkID, data.NetworkId)
-
 }
