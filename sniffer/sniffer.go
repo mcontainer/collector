@@ -2,12 +2,12 @@ package sniffer
 
 import (
 	"docker-visualizer/collector/event"
+	"docker-visualizer/collector/log"
 	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/afpacket"
 	"github.com/google/gopacket/examples/util"
 	"github.com/google/gopacket/layers"
-	log "github.com/sirupsen/logrus"
 	"regexp"
 )
 

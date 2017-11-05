@@ -1,12 +1,11 @@
 package util
 
 import (
+	"docker-visualizer/collector/log"
 	"os"
-	log "github.com/sirupsen/logrus"
 )
 
 const ENDPOINT_KEY = "AGGREGATOR"
-
 
 func SetAggregatorEndpoint(aggregator *string) {
 	endpoint := os.Getenv(ENDPOINT_KEY)

@@ -1,10 +1,11 @@
 package docker
 
 import (
+	"docker-visualizer/collector/log"
 	"errors"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
@@ -71,7 +72,7 @@ func (fetcher *Fetcher) ListenNetwork() (<-chan EventMessage, <-chan error) {
 			switch data.Action {
 			case ACTION_CONNECT:
 				if data.Actor.ID != fetcher.IngressId && data.Actor.Attributes["name"] != INGRESS {
-					log.WithFields(log.Fields{
+					log.WithFields(logrus.Fields{
 						"ID":        data.Actor.ID,
 						"container": data.Actor.Attributes["container"],
 					}).Info("Fetcher::Network -- CONNECTION")
@@ -83,7 +84,7 @@ func (fetcher *Fetcher) ListenNetwork() (<-chan EventMessage, <-chan error) {
 					}
 				}
 			case ACTION_DISCONNECT:
-				log.WithFields(log.Fields{
+				log.WithFields(logrus.Fields{
 					"ID":        data.Actor.ID,
 					"container": data.Actor.Attributes["container"],
 				}).Info("Fetcher::Network -- DISCONNECTION")

@@ -4,12 +4,12 @@ import (
 	"errors"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
-	"testing"
-	"github.com/stretchr/testify/mock"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"golang.org/x/net/context"
+	"testing"
 )
 
 type FakeClient struct {
@@ -139,8 +139,8 @@ func TestDockerFromNetworkSucess(t *testing.T) {
 	mockContainers["test"] = types.EndpointResource{}
 	mockContainers["titi"] = types.EndpointResource{}
 	mockResults := types.NetworkResource{
-			ID: "123",
-			Containers: mockContainers,
+		ID:         "123",
+		Containers: mockContainers,
 	}
 
 	mockClient := FakeClient{}

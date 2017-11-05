@@ -1,9 +1,9 @@
 package util
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"testing"
 )
 
 func TestSetAggregatorEndpointWithNoEnv(t *testing.T) {

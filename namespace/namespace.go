@@ -3,11 +3,11 @@ package namespace
 import (
 	"context"
 	"docker-visualizer/collector/event"
+	"docker-visualizer/collector/log"
 	"docker-visualizer/collector/sniffer"
 	"errors"
 	"github.com/Workiva/go-datastructures/set"
 	"github.com/containernetworking/plugins/pkg/ns"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"path/filepath"

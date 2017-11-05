@@ -4,11 +4,12 @@ import (
 	"context"
 	"docker-visualizer/collector/docker"
 	"docker-visualizer/collector/event"
+	"docker-visualizer/collector/log"
 	"docker-visualizer/collector/namespace"
 	"docker-visualizer/collector/util"
+	"docker-visualizer/collector/version"
 	pb "docker-visualizer/proto/containers"
 	"flag"
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
@@ -23,14 +24,13 @@ var (
 	node       = flag.String("node", "sample-node", "Specify node name")
 )
 
+func init() {
+	version.Info(VERSION, COMMIT, BRANCH)
+}
+
 func main() {
 	flag.Parse()
 
-	log.WithFields(log.Fields{
-		"version": VERSION,
-		"commit":  COMMIT,
-		"branch":  BRANCH,
-	}).Info("Starting collector")
 	ctx := context.Background()
 	hostname := util.FindHostname()
 	util.SetAggregatorEndpoint(aggregator)

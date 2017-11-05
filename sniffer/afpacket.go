@@ -1,10 +1,10 @@
 package sniffer
 
 import (
+	"docker-visualizer/collector/log"
 	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/afpacket"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"time"
 )

@@ -2,10 +2,11 @@ package event
 
 import (
 	"context"
+	"docker-visualizer/collector/log"
 	pb "docker-visualizer/proto/containers"
-	"github.com/docker/docker/api/types"
-	log "github.com/sirupsen/logrus"
 	"errors"
+	"github.com/docker/docker/api/types"
+	"github.com/sirupsen/logrus"
 )
 
 type NetworkEvent struct {
@@ -31,7 +32,7 @@ func NewEventBroker(client pb.ContainerServiceClient) *EventBroker {
 func (b *EventBroker) SendNode(container *types.Container, network, hostname string) error {
 	ctx := context.Background()
 	ip := container.NetworkSettings.Networks[network].IPAMConfig.IPv4Address
-	log.WithFields(log.Fields{
+	log.WithFields(logrus.Fields{
 		"id":           container.ID,
 		"name":         container.Names[0],
 		"service":      container.Labels["com.docker.swarm.service.name"],
@@ -58,9 +59,7 @@ func (b *EventBroker) SendNode(container *types.Container, network, hostname str
 
 func (b *EventBroker) RemoveNode(containerID string) error {
 	ctx := context.Background()
-	log.WithFields(log.Fields{
-		"id": containerID,
-	}).Info("Broker:: Remove container")
+	log.WithField("id", containerID).Info("Broker:: Remove container")
 	r, e := b.grpc.RemoveNode(ctx, &pb.ContainerID{Id: containerID})
 	if e != nil {
 		return e
@@ -80,7 +79,7 @@ func (b *EventBroker) Listen() {
 	}
 	for {
 		v := <-*b.Stream
-		log.WithFields(log.Fields{
+		log.WithFields(logrus.Fields{
 			"src":  v.IpSrc,
 			"dst":  v.IpDst,
 			"size": v.Size,

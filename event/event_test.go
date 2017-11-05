@@ -1,15 +1,15 @@
 package event
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	pb "docker-visualizer/proto/containers"
-	"github.com/stretchr/testify/mock"
-	"google.golang.org/grpc"
-	"golang.org/x/net/context"
+	"errors"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/network"
-	"errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"testing"
 )
 
 type Mock struct {

@@ -1,13 +1,13 @@
 package namespace
 
 import (
-	"testing"
+	"docker-visualizer/collector/event"
+	"errors"
+	"github.com/Workiva/go-datastructures/set"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"docker-visualizer/docker-event-collector/event"
 	"path/filepath"
-	"github.com/Workiva/go-datastructures/set"
-	"errors"
+	"testing"
 )
 
 type FakeNamespace struct {
@@ -48,11 +48,11 @@ func TestNamespace_RunSuccess(t *testing.T) {
 	wait := make(chan struct{})
 	completePath := filepath.Join(path, ns)
 	mockNamespace.
-	On("findNetworkNamespace", path, ns).Return(ns, nil).
-	On("runInNamespace", completePath, "toto", &event.EventBroker{}, &wait).Return(nil).
-	Run(func(args mock.Arguments) {
-		wait <- struct{}{}
-	})
+		On("findNetworkNamespace", path, ns).Return(ns, nil).
+		On("runInNamespace", completePath, "toto", &event.EventBroker{}, &wait).Return(nil).
+		Run(func(args mock.Arguments) {
+			wait <- struct{}{}
+		})
 	e := namespace.Run(ns, "toto", &event.EventBroker{}, &wait)
 	assert.Empty(t, e)
 	assert.Equal(t, int64(1), namespace.isRunning.Len())
@@ -70,8 +70,8 @@ func TestNamespace_RunFailure(t *testing.T) {
 	wait := make(chan struct{})
 	completePath := filepath.Join(path, ns)
 	mockNamespace.
-	On("findNetworkNamespace", path, ns).Return(ns, nil).
-	On("runInNamespace", completePath, "toto", &event.EventBroker{}, &wait).Return(errors.New("error"))
+		On("findNetworkNamespace", path, ns).Return(ns, nil).
+		On("runInNamespace", completePath, "toto", &event.EventBroker{}, &wait).Return(errors.New("error"))
 	e := namespace.Run(ns, "toto", &event.EventBroker{}, &wait)
 	assert.NotEmpty(t, e)
 }
