@@ -1,11 +1,15 @@
 package util
 
 import (
-	"docker-visualizer/collector/log"
+	log "github.com/sirupsen/logrus"
 	"os"
+	"os/exec"
+	"strconv"
 )
 
-const ENDPOINT_KEY = "AGGREGATOR"
+const (
+	ENDPOINT_KEY = "AGGREGATOR"
+)
 
 func SetAggregatorEndpoint(aggregator *string) {
 	endpoint := os.Getenv(ENDPOINT_KEY)
@@ -21,4 +25,17 @@ func FindHostname() string {
 		log.Fatal("Util:: error while fetching hostname")
 	}
 	return name
+}
+
+func IsRoot() bool {
+	cmd := exec.Command("id", "-u")
+	output, err := cmd.Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+	i, err := strconv.Atoi(string(output[:len(output)-1]))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return i == 0
 }

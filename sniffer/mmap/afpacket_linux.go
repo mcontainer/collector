@@ -1,10 +1,12 @@
-package sniffer
+// +build linux
+
+package mmap
 
 import (
-	"docker-visualizer/collector/log"
 	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/afpacket"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"time"
 )
@@ -32,7 +34,7 @@ func afpacketComputeSize(target_size_mb int, snaplen int, page_size int) (
 	return frame_size, block_size, num_blocks, nil
 }
 
-func newAfpacketSniffer(device string, timeout time.Duration) (h *afpacketSniffer, err error) {
+func New(device string, timeout time.Duration) (h *afpacketSniffer, err error) {
 
 	const (
 		buffer_mb = 24
@@ -44,6 +46,13 @@ func newAfpacketSniffer(device string, timeout time.Duration) (h *afpacketSniffe
 		snaplen,
 		os.Getpagesize(),
 	)
+
+	log.
+		WithField("frameSize", frameSize).
+		WithField("blockSize", blockSize).
+		WithField("numBlocks", numBlocks).
+		Info("Afpacket parameters")
+
 	if e != nil {
 		log.WithField("error", e).Fatal("Error while calculating afpacket size")
 	}

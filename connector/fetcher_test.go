@@ -1,6 +1,7 @@
-package docker
+package connector
 
 import (
+	"docker-visualizer/collector/connector/docker"
 	"errors"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
@@ -20,22 +21,22 @@ var (
 	event      []events.Message
 )
 
-func (c *FakeClient) listNetworks(options types.NetworkListOptions) ([]types.NetworkResource, error) {
+func (c *FakeClient) ListNetworks(options types.NetworkListOptions) ([]types.NetworkResource, error) {
 	args := c.m.Called(options)
 	return args.Get(0).([]types.NetworkResource), args.Error(1)
 }
 
-func (c *FakeClient) inspectNetwork(networkID string, options types.NetworkInspectOptions) (types.NetworkResource, error) {
+func (c *FakeClient) InspectNetwork(networkID string, options types.NetworkInspectOptions) (types.NetworkResource, error) {
 	args := c.m.Called(networkID, options)
 	return args.Get(0).(types.NetworkResource), args.Error(1)
 }
 
-func (c *FakeClient) listContainers(options types.ContainerListOptions) ([]types.Container, error) {
+func (c *FakeClient) ListContainers(options types.ContainerListOptions) ([]types.Container, error) {
 	args := c.m.Called(options)
 	return args.Get(0).([]types.Container), args.Error(1)
 }
 
-func (c *FakeClient) streamEvents(options types.EventsOptions) (<-chan events.Message, <-chan error) {
+func (c *FakeClient) StreamEvents(options types.EventsOptions) (<-chan events.Message, <-chan error) {
 	messages := make(chan events.Message)
 	errs := make(chan error, 1)
 	started := make(chan struct{})
@@ -60,7 +61,7 @@ func (c *FakeClient) streamEvents(options types.EventsOptions) (<-chan events.Me
 }
 
 func TestNewFetcher(t *testing.T) {
-	client := NewDockerClient()
+	client := docker.NewDockerClient()
 	fetcher := NewFetcher(client)
 	assert.NotNil(t, fetcher)
 }

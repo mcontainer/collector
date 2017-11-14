@@ -2,11 +2,10 @@ package event
 
 import (
 	"context"
-	"docker-visualizer/collector/log"
 	pb "docker-visualizer/proto/containers"
 	"errors"
 	"github.com/docker/docker/api/types"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type NetworkEvent struct {
@@ -32,7 +31,7 @@ func NewEventBroker(client pb.ContainerServiceClient) *EventBroker {
 func (b *EventBroker) SendNode(container *types.Container, network, hostname string) error {
 	ctx := context.Background()
 	ip := container.NetworkSettings.Networks[network].IPAMConfig.IPv4Address
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"id":           container.ID,
 		"name":         container.Names[0],
 		"service":      container.Labels["com.docker.swarm.service.name"],
@@ -79,7 +78,7 @@ func (b *EventBroker) Listen() {
 	}
 	for {
 		v := <-*b.Stream
-		log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"src":  v.IpSrc,
 			"dst":  v.IpDst,
 			"size": v.Size,

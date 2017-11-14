@@ -16,7 +16,7 @@ all: clean format linux
 linux:
 	mkdir -p ${BUILD_DIR}; \
 	cd ${BUILD_DIR}; \
-	GOOS=linux GOARCH=${GOARCH} go build ${LDFLAGS} -o ${BINARY}-linux-${GOARCH} ../ ; \
+	GOOS=linux GOARCH=${GOARCH} go build ${LDFLAGS} -o ${BINARY} ../ ; \
 	cd .. >/dev/null
 
 clean:

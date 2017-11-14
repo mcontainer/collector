@@ -1,11 +1,11 @@
-package docker
+package connector
 
 import (
-	"docker-visualizer/collector/log"
+	"docker-visualizer/collector/connector/docker"
 	"errors"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
@@ -17,24 +17,19 @@ type EventMessage struct {
 }
 
 type Fetcher struct {
-	cli       IDockerClient
+	cli       docker.IDockerClient
 	IngressId string
 	Stop      chan string
 }
 
 const (
-	ACTION_CREATE     = "create"
 	ACTION_CONNECT    = "connect"
 	ACTION_DISCONNECT = "disconnect"
-	ACTION_STOP       = "stop"
-	ACTION_KILL       = "kill"
-	ACTION_DIE        = "die"
-	ACTION_START      = "start"
 	INGRESS           = "ingress"
 )
 
-func NewFetcher(client IDockerClient) *Fetcher {
-	log.Info("Fetcher:: Start creating fetcher")
+func NewFetcher(client docker.IDockerClient) *Fetcher {
+	log.Info("Creating fetcher")
 	stop := make(chan string)
 	return &Fetcher{
 		cli:  client,
@@ -45,7 +40,7 @@ func NewFetcher(client IDockerClient) *Fetcher {
 func (fetcher *Fetcher) DockerFromNetwork(id string) ([]*types.Container, error) {
 	ctx := context.Background()
 	var containers []*types.Container
-	network, err := fetcher.cli.inspectNetwork(id, types.NetworkInspectOptions{})
+	network, err := fetcher.cli.InspectNetwork(id, types.NetworkInspectOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -65,14 +60,14 @@ func (fetcher *Fetcher) ListenNetwork() (<-chan EventMessage, <-chan error) {
 	f.Add("type", "network")
 	f.Add("event", ACTION_CONNECT)
 	f.Add("event", ACTION_DISCONNECT)
-	events, err := fetcher.cli.streamEvents(types.EventsOptions{Filters: f})
+	events, err := fetcher.cli.StreamEvents(types.EventsOptions{Filters: f})
 	go func() {
 		for {
 			data := <-events
 			switch data.Action {
 			case ACTION_CONNECT:
 				if data.Actor.ID != fetcher.IngressId && data.Actor.Attributes["name"] != INGRESS {
-					log.WithFields(logrus.Fields{
+					log.WithFields(log.Fields{
 						"ID":        data.Actor.ID,
 						"container": data.Actor.Attributes["container"],
 					}).Info("Fetcher::Network -- CONNECTION")
@@ -84,7 +79,7 @@ func (fetcher *Fetcher) ListenNetwork() (<-chan EventMessage, <-chan error) {
 					}
 				}
 			case ACTION_DISCONNECT:
-				log.WithFields(logrus.Fields{
+				log.WithFields(log.Fields{
 					"ID":        data.Actor.ID,
 					"container": data.Actor.Attributes["container"],
 				}).Info("Fetcher::Network -- DISCONNECTION")
@@ -102,7 +97,7 @@ func (fetcher *Fetcher) ListenNetwork() (<-chan EventMessage, <-chan error) {
 func (fetcher *Fetcher) FindOverlayNetworks() ([]types.NetworkResource, error) {
 	f := filters.NewArgs()
 	f.Add("driver", "overlay")
-	networks, err := fetcher.cli.listNetworks(types.NetworkListOptions{Filters: f})
+	networks, err := fetcher.cli.ListNetworks(types.NetworkListOptions{Filters: f})
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +111,7 @@ func (fetcher *Fetcher) FindOverlayNetworks() ([]types.NetworkResource, error) {
 func (fetcher *Fetcher) FilterContainer(ctx context.Context, id string) (*types.Container, error) {
 	f := filters.NewArgs()
 	f.Add("id", id)
-	containers, err := fetcher.cli.listContainers(types.ContainerListOptions{Filters: f})
+	containers, err := fetcher.cli.ListContainers(types.ContainerListOptions{Filters: f})
 	if err != nil {
 		return nil, err
 	}
