@@ -10,7 +10,7 @@ func createVersionCmd(v, commit, branch string) *cobra.Command {
 		Use:   "version",
 		Short: "Show current version info",
 		Run: func(cmd *cobra.Command, args []string) {
-			version.Info(v, commit, branch	)
+			version.Info(v, commit, branch)
 		},
 	}
 }
