@@ -111,6 +111,7 @@ func (fetcher *Fetcher) FindOverlayNetworks() ([]types.NetworkResource, error) {
 func (fetcher *Fetcher) FilterContainer(ctx context.Context, id string) (*types.Container, error) {
 	f := filters.NewArgs()
 	f.Add("id", id)
+	log.WithField("id", id).Info("Searching container")
 	containers, err := fetcher.cli.ListContainers(types.ContainerListOptions{Filters: f})
 	if err != nil {
 		return nil, err

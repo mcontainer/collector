@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/client"
 	"log"
@@ -13,6 +14,7 @@ type IDockerClient interface {
 	ListNetworks(options types.NetworkListOptions) ([]types.NetworkResource, error)
 	ListContainers(options types.ContainerListOptions) ([]types.Container, error)
 	InspectNetwork(networkID string, options types.NetworkInspectOptions) (types.NetworkResource, error)
+	WaitContainer(id string) (<-chan container.ContainerWaitOKBody, <-chan error)
 }
 
 type DockerClient struct {
@@ -25,6 +27,11 @@ func NewDockerClient() IDockerClient {
 		log.Fatal(err)
 	}
 	return &DockerClient{api: c}
+}
+
+func (client *DockerClient) WaitContainer(id string) (<-chan container.ContainerWaitOKBody, <-chan error) {
+	ctx := context.Background()
+	return client.api.ContainerWait(ctx, id, container.WaitConditionNextExit)
 }
 
 func (client *DockerClient) InspectNetwork(networkID string, options types.NetworkInspectOptions) (types.NetworkResource, error) {

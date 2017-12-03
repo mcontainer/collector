@@ -7,6 +7,8 @@ import (
 	"docker-visualizer/collector/namespace"
 	"docker-visualizer/collector/util"
 	pb "docker-visualizer/proto/containers"
+	"github.com/cenkalti/backoff"
+	"github.com/docker/docker/api/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -89,12 +91,22 @@ func createRunCmd(name string) *cobra.Command {
 						} else {
 							log.WithField("id", info.NetworkId).Info("App:: Network already monitored")
 						}
-						container, err := fetcher.FilterContainer(ctx, info.ContainerId)
+						containerChan := make(chan *types.Container)
+						operation := func() error {
+							c, e := fetcher.FilterContainer(ctx, info.ContainerId)
+							if c != nil {
+								containerChan <- c
+							}
+							return e
+						}
+						go backoff.Retry(operation, backoff.NewExponentialBackOff())
+						container := <-containerChan
 						if err != nil {
 							log.Error(err)
-						}
-						if e := broker.SendNode(container, info.NetworkName, hostname); e != nil {
-							log.WithField("Error", e).Warn("Broker:: An error occured while sending node")
+						} else {
+							if e := broker.SendNode(container, info.NetworkName, hostname); e != nil {
+								log.WithField("Error", e).Warn("Broker:: An error occured while sending node")
+							}
 						}
 					case connector.ACTION_DISCONNECT:
 						if e := broker.RemoveNode(info.ContainerId); e != nil {
